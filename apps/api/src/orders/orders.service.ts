@@ -6,6 +6,7 @@ import {
   getMockCharacterBySlug,
   splitByTakeRate,
   type CharacterDetailDTO,
+  type OrderDTO,
 } from '@acm/shared';
 import { createHash, randomUUID } from 'node:crypto';
 import { EscrowServiceImpl } from '../ledger/escrow.service';
@@ -17,28 +18,12 @@ export interface PurchaseInput {
   licenseTierId: string;
 }
 
-export interface PurchaseResult {
-  orderId: string;
-  characterSlug: string;
-  licenseType: LicenseType;
-  amountMinor: number;
-  currency: string;
-  commissionMinor: number;
-  sellerNetMinor: number;
-  escrowStatus: 'RELEASED';
-  certificate: {
-    serial: string;
-    issuedAt: string;
-    signature: string;
-    ledgerHash: string;
-  };
-}
+export interface PurchaseResult extends OrderDTO {}
 
-// Wallet-based checkout: debit buyer wallet → escrow hold → auto-release for
-// instant digital goods (ONE_TIME / FULL_RIGHTS) with 30% platform commission.
 @Injectable()
 export class OrdersService {
   private readonly orders = new Map<string, PurchaseResult>();
+  private readonly byBuyer = new Map<string, Set<string>>();
 
   constructor(
     private readonly escrow: EscrowServiceImpl,
@@ -62,10 +47,8 @@ export class OrdersService {
       PLATFORM_TAKE_RATE_BPS,
     );
 
-    // 1. Hold buyer funds in escrow custody.
     await this.escrow.hold(orderId, amount, input.buyerId);
 
-    // 2. Auto-release for instant digital delivery (ONE_TIME / FULL_RIGHTS).
     if (
       tier.type === LicenseType.ONE_TIME ||
       tier.type === LicenseType.FULL_RIGHTS ||
@@ -73,7 +56,6 @@ export class OrdersService {
     ) {
       const payeeUserId = this.resolvePayeeId(character);
       const release = await this.escrow.release({ orderId, payeeUserId });
-
       const certificate = this.issueCertificate(
         orderId,
         input.buyerId,
@@ -84,7 +66,9 @@ export class OrdersService {
 
       const result: PurchaseResult = {
         orderId,
+        buyerId: input.buyerId,
         characterSlug: input.characterSlug,
+        characterName: character.name,
         licenseType: tier.type,
         amountMinor: amount.amountMinor,
         currency: amount.currency,
@@ -92,8 +76,11 @@ export class OrdersService {
         sellerNetMinor,
         escrowStatus: 'RELEASED',
         certificate,
+        purchasedAt: new Date().toISOString(),
       };
       this.orders.set(orderId, result);
+      if (!this.byBuyer.has(input.buyerId)) this.byBuyer.set(input.buyerId, new Set());
+      this.byBuyer.get(input.buyerId)!.add(orderId);
       return result;
     }
 
@@ -104,17 +91,41 @@ export class OrdersService {
     return this.orders.get(orderId);
   }
 
-  verifyCertificate(serial: string): { valid: boolean; orderId?: string; ledgerHash?: string } {
+  listByBuyer(buyerId: string): PurchaseResult[] {
+    const ids = this.byBuyer.get(buyerId);
+    if (!ids) return [];
+    return [...ids]
+      .map((id) => this.orders.get(id)!)
+      .filter(Boolean)
+      .sort((a, b) => b.purchasedAt.localeCompare(a.purchasedAt));
+  }
+
+  buyerOwnsCharacter(buyerId: string, characterSlug: string): PurchaseResult | undefined {
+    return this.listByBuyer(buyerId).find((o) => o.characterSlug === characterSlug);
+  }
+
+  verifyCertificate(serial: string): {
+    valid: boolean;
+    orderId?: string;
+    ledgerHash?: string;
+    buyerId?: string;
+    characterSlug?: string;
+  } {
     for (const order of this.orders.values()) {
       if (order.certificate.serial === serial) {
-        return { valid: true, orderId: order.orderId, ledgerHash: order.certificate.ledgerHash };
+        return {
+          valid: true,
+          orderId: order.orderId,
+          ledgerHash: order.certificate.ledgerHash,
+          buyerId: order.buyerId,
+          characterSlug: order.characterSlug,
+        };
       }
     }
     return { valid: false };
   }
 
   private resolvePayeeId(character: CharacterDetailDTO): string {
-    // Phase 1 org-listed characters: route payout to a synthetic org-creator id.
     return `org_payee_${character.ownerName.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;
   }
 

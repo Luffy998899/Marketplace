@@ -2,6 +2,7 @@ export * from './enums.js';
 export * from './constants.js';
 export * from './money.js';
 export * from './dto.js';
+export * from './auth-dto.js';
 export * from './filters.js';
 export * from './ledger.js';
 export * from './escrow.js';

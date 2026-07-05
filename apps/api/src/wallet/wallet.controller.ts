@@ -1,28 +1,34 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
-import { PaymentProvider } from '@acm/shared';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { PaymentProvider, UserRole } from '@acm/shared';
+import { CurrentUser, JwtPayload, Roles } from '../auth/auth.decorators';
+import { JwtAuthGuard, RolesGuard } from '../auth/auth.guards';
 import { WalletService } from './wallet.service';
 
 @Controller('wallet')
 export class WalletController {
   constructor(private readonly wallet: WalletService) {}
 
-  @Get(':userId/balance')
-  balance(@Param('userId') userId: string) {
-    return this.wallet.getBalance(userId);
+  @Get('me/balance')
+  @UseGuards(JwtAuthGuard)
+  balance(@CurrentUser() user: JwtPayload) {
+    return this.wallet.getBalance(user.sub);
   }
 
-  @Get(':userId/topups')
-  topUps(@Param('userId') userId: string) {
-    return this.wallet.listTopUps(userId);
+  @Get('me/topups')
+  @UseGuards(JwtAuthGuard)
+  topUps(@CurrentUser() user: JwtPayload) {
+    return this.wallet.listTopUps(user.sub);
   }
 
-  @Post(':userId/topup')
+  @Post('me/topup')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.BUYER, UserRole.CREATOR, UserRole.ADMIN)
   topUp(
-    @Param('userId') userId: string,
+    @CurrentUser() user: JwtPayload,
     @Body() body: { amountMinor: number; currency?: string; provider?: PaymentProvider },
   ) {
     return this.wallet.topUp(
-      userId,
+      user.sub,
       body.amountMinor,
       body.currency,
       body.provider ?? PaymentProvider.STRIPE,
