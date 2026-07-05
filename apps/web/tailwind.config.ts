@@ -59,11 +59,21 @@ const config: Config = {
           '0%, 100%': { opacity: '0.4' },
           '50%': { opacity: '0.8' },
         },
+        float: {
+          '0%, 100%': { transform: 'translate(0, 0) scale(1)' },
+          '50%': { transform: 'translate(3%, -4%) scale(1.05)' },
+        },
+        float_delay: {
+          '0%, 100%': { transform: 'translate(0, 0) scale(1)' },
+          '50%': { transform: 'translate(-4%, 3%) scale(1.03)' },
+        },
       },
       animation: {
         shimmer: 'shimmer 1.8s infinite',
         'fade-up': 'fade-up 0.6s ease-out forwards',
         'pulse-lime': 'pulse_lime 3s ease-in-out infinite',
+        float: 'float 18s ease-in-out infinite',
+        'float-delay': 'float_delay 22s ease-in-out infinite',
       },
     },
   },

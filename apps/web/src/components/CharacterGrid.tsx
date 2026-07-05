@@ -2,42 +2,18 @@
 
 import type { CharacterCardDTO } from '@acm/shared';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { forwardRef, useMemo } from 'react';
-import { VirtuosoGrid, type GridComponents } from 'react-virtuoso';
+import { useEffect, useMemo, useRef } from 'react';
 import { fetchCharacters } from '@/lib/data';
 import { useFilterStore } from '@/store/filters';
+import { getBentoSize } from '@/lib/bento';
 import { CharacterCard } from './CharacterCard';
-import { CardSkeleton, GridSkeleton } from './GridSkeleton';
+import { GridSkeleton } from './GridSkeleton';
 
 const PAGE_SIZE = 24;
 
-// Virtualised, responsive grid container. Only visible rows are mounted, so it
-// stays smooth at 1000+ items.
-const gridComponents: GridComponents = {
-  List: forwardRef<HTMLDivElement, { style?: React.CSSProperties; children?: React.ReactNode }>(
-    function List({ style, children, ...props }, ref) {
-      return (
-        <div
-          ref={ref}
-          {...props}
-          style={style}
-          className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
-        >
-          {children}
-        </div>
-      );
-    },
-  ),
-  Item: ({ children, ...props }) => (
-    <div {...props} className="min-w-0">
-      {children}
-    </div>
-  ),
-};
-
 export function CharacterGrid({ onTotal }: { onTotal?: (n: number) => void }) {
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const toFilter = useFilterStore((s) => s.toFilter);
-  // Recompute the query key from every filter-affecting field.
   const deps = useFilterStore((s) => [
     s.q,
     s.gender,
@@ -66,7 +42,23 @@ export function CharacterGrid({ onTotal }: { onTotal?: (n: number) => void }) {
   const total = query.data?.pages[0]?.total ?? 0;
   if (onTotal && total) onTotal(total);
 
-  if (query.isLoading) return <GridSkeleton count={15} />;
+  // Infinite scroll via intersection observer (bento grid replaces uniform virtuoso).
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && query.hasNextPage && !query.isFetchingNextPage) {
+          query.fetchNextPage();
+        }
+      },
+      { rootMargin: '400px' },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [query]);
+
+  if (query.isLoading) return <GridSkeleton count={12} />;
 
   if (query.isError) {
     return (
@@ -91,16 +83,28 @@ export function CharacterGrid({ onTotal }: { onTotal?: (n: number) => void }) {
   }
 
   return (
-    <VirtuosoGrid
-      useWindowScroll
-      data={items}
-      components={gridComponents}
-      endReached={() => {
-        if (query.hasNextPage && !query.isFetchingNextPage) query.fetchNextPage();
-      }}
-      overscan={800}
-      itemContent={(index, character) => <CharacterCard character={character} index={index} />}
-      style={{ minHeight: '60vh' }}
-    />
+    <>
+      <div className="bento-grid">
+        {items.map((character, index) => (
+          <CharacterCard
+            key={character.id}
+            character={character}
+            index={index}
+            bentoSize={getBentoSize(index)}
+          />
+        ))}
+      </div>
+
+      <div ref={sentinelRef} className="h-4" aria-hidden />
+
+      {query.isFetchingNextPage && (
+        <div className="mt-6 flex justify-center">
+          <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-label text-ink-dim">
+            <span className="h-1.5 w-1.5 animate-pulse-lime rounded-full bg-lime" />
+            Loading more
+          </span>
+        </div>
+      )}
+    </>
   );
 }
