@@ -1,9 +1,15 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
+import { SiteFooter } from '@/components/SiteFooter';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-display',
+  weight: ['500', '600', '700'],
+});
 
 export const metadata: Metadata = {
   title: 'Synthetica — AI Character Marketplace',
@@ -13,9 +19,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className="bg-aurora min-h-screen font-sans antialiased">
-        <Providers>{children}</Providers>
+    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
+      <body className="bg-cinema bg-vignette min-h-screen font-sans antialiased">
+        <div className="relative z-10 flex min-h-screen flex-col">
+          <Providers>{children}</Providers>
+          <SiteFooter />
+        </div>
       </body>
     </html>
   );

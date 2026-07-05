@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { CharacterGrid } from '@/components/CharacterGrid';
 import { FilterRail } from '@/components/FilterRail';
 import { Header } from '@/components/Header';
@@ -15,47 +16,59 @@ export default function HomePage() {
     <div className="min-h-screen">
       <Header total={total} />
 
-      {/* Hero */}
-      <section className="mx-auto max-w-[1600px] px-4 pb-2 pt-8 sm:px-6">
-        <div className="max-w-3xl">
-          <p className="mb-2 inline-block rounded-full border border-neon-500/30 bg-neon-500/10 px-3 py-1 text-xs font-medium text-neon-200">
-            The world’s first AI Character Marketplace
-          </p>
-          <h1 className="text-3xl font-bold leading-tight text-white sm:text-4xl">
-            Discover, license & trade{' '}
-            <span className="bg-gradient-to-r from-neon-300 to-accent bg-clip-text text-transparent">
-              fully synthetic
-            </span>{' '}
-            AI characters.
+      {/* Cinematic hero — Higgsfield: uppercase display, one lime focal */}
+      <section className="relative mx-auto max-w-[1600px] overflow-hidden px-4 pb-6 pt-10 sm:px-6 sm:pt-14">
+        <div className="pointer-events-none absolute -left-32 top-0 h-64 w-64 rounded-full bg-lime/5 blur-3xl" />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className="relative max-w-4xl"
+        >
+          <span className="badge-lime mb-4">AI Character Marketplace</span>
+          <h1 className="heading-display text-4xl font-bold leading-[0.95] sm:text-5xl md:text-6xl lg:text-7xl">
+            License
+            <br />
+            <span className="text-lime">Synthetic</span>
+            <br />
+            Influencers
           </h1>
-          <p className="mt-2 text-sm text-white/60">
-            Every character is 100% synthetic — no real-person likeness. Previews are watermarked;
-            locked character sheets unlock via signed links after purchase.
+          <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-secondary sm:text-lg">
+            Discover, license, and trade fully synthetic AI characters. Watermarked previews.
+            Locked assets unlock after purchase.
           </p>
-        </div>
+          <div className="mt-6 flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-label text-ink-dim">
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-lime animate-pulse-lime" />
+              120+ live characters
+            </span>
+            <span>·</span>
+            <span>From $1 license</span>
+            <span>·</span>
+            <span>Escrow protected</span>
+          </div>
+        </motion.div>
       </section>
 
-      <div className="mx-auto flex max-w-[1600px] gap-6 px-4 pb-16 pt-4 sm:px-6">
-        {/* Desktop filter rail */}
-        <div className="hidden w-64 shrink-0 lg:block">
-          <div className="sticky top-20 max-h-[calc(100vh-6rem)]">
+      <div className="mx-auto flex max-w-[1600px] gap-6 px-4 pb-8 sm:px-6">
+        <aside className="hidden w-56 shrink-0 xl:block">
+          <div className="sticky top-[4.5rem] max-h-[calc(100vh-5.5rem)]">
             <FilterRail />
           </div>
-        </div>
+        </aside>
 
-        {/* Grid column */}
         <main className="min-w-0 flex-1">
           <div className="mb-4 flex items-center justify-between lg:hidden">
             <button
               onClick={() => setMobileFilters((v) => !v)}
-              className="rounded-full border border-white/15 px-4 py-1.5 text-sm text-white/80"
+              className="chip"
             >
-              Filters{activeCount ? ` (${activeCount})` : ''}
+              Filters{activeCount ? ` · ${activeCount}` : ''}
             </button>
           </div>
 
           {mobileFilters && (
-            <div className="mb-4 rounded-2xl border border-white/10 bg-ink-900/60 p-4 lg:hidden">
+            <div className="card-surface mb-4 p-4 lg:hidden">
               <FilterRail />
             </div>
           )}

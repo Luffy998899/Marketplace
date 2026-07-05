@@ -21,7 +21,7 @@ const gridComponents: GridComponents = {
           ref={ref}
           {...props}
           style={style}
-          className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+          className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
         >
           {children}
         </div>
@@ -70,12 +70,9 @@ export function CharacterGrid({ onTotal }: { onTotal?: (n: number) => void }) {
 
   if (query.isError) {
     return (
-      <div className="grid place-items-center py-24 text-center text-white/60">
-        <p>Couldn’t load characters.</p>
-        <button
-          onClick={() => query.refetch()}
-          className="mt-3 rounded-full border border-neon-400 px-4 py-1.5 text-sm text-neon-200"
-        >
+      <div className="grid place-items-center py-24 text-center">
+        <p className="text-ink-secondary">Couldn&apos;t load characters.</p>
+        <button onClick={() => query.refetch()} className="btn-ghost mt-4 !text-xs">
           Retry
         </button>
       </div>
@@ -84,9 +81,11 @@ export function CharacterGrid({ onTotal }: { onTotal?: (n: number) => void }) {
 
   if (items.length === 0) {
     return (
-      <div className="grid place-items-center py-24 text-center text-white/50">
-        <p className="text-lg">No characters match your filters.</p>
-        <p className="text-sm">Try clearing a few filters.</p>
+      <div className="grid place-items-center py-24 text-center">
+        <p className="font-display text-lg uppercase tracking-wide text-ink-secondary">
+          No matches
+        </p>
+        <p className="mt-1 text-sm text-ink-dim">Try clearing filters.</p>
       </div>
     );
   }
@@ -100,7 +99,7 @@ export function CharacterGrid({ onTotal }: { onTotal?: (n: number) => void }) {
         if (query.hasNextPage && !query.isFetchingNextPage) query.fetchNextPage();
       }}
       overscan={800}
-      itemContent={(_, character) => <CharacterCard character={character} />}
+      itemContent={(index, character) => <CharacterCard character={character} index={index} />}
       style={{ minHeight: '60vh' }}
     />
   );

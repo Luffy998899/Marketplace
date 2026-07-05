@@ -4,6 +4,7 @@ import { formatMoney } from '@acm/shared';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { SiteHeader } from '@/components/SiteHeader';
 import { assetsApi, ordersApi, walletApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 
@@ -24,7 +25,9 @@ export default function DashboardPage() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [downloads, setDownloads] = useState<Record<string, Array<{ url: string; label: string; expiresAt: string }>>>({});
+  const [downloads, setDownloads] = useState<
+    Record<string, Array<{ url: string; label: string; expiresAt: string }>>
+  >({});
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -64,115 +67,118 @@ export default function DashboardPage() {
 
   if (authLoading || (!user && loading)) {
     return (
-      <div className="grid min-h-[50vh] place-items-center text-white/50">Loading…</div>
+      <div className="grid min-h-[50vh] place-items-center text-ink-dim">Loading…</div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Buyer dashboard</h1>
-          <p className="text-sm text-white/50">Welcome, {user?.displayName}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="rounded-full border border-neon-500/30 bg-neon-500/10 px-3 py-1 text-sm text-neon-200">
-            Wallet: {formatMoney(balance ?? 0)}
-          </span>
-          <button
-            onClick={() => {
-              logout();
-              router.push('/');
-            }}
-            className="text-sm text-white/50 hover:text-white"
-          >
-            Sign out
-          </button>
-        </div>
-      </div>
-
-      {error && <p className="mt-4 text-sm text-rose-400">{error}</p>}
-
-      <section className="mt-8">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-white/40">
-          Your licenses ({orders.length})
-        </h2>
-
-        {loading ? (
-          <p className="mt-4 text-white/50">Loading licenses…</p>
-        ) : orders.length === 0 ? (
-          <div className="mt-4 rounded-2xl border border-dashed border-white/10 p-8 text-center">
-            <p className="text-white/60">No licenses yet.</p>
-            <Link href="/" className="mt-2 inline-block text-sm text-neon-300 hover:text-neon-200">
-              Browse characters →
-            </Link>
+    <>
+      <SiteHeader />
+      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <span className="badge-lime mb-3">Your vault</span>
+            <h1 className="heading-display text-3xl font-bold sm:text-4xl">Dashboard</h1>
+            <p className="mt-1 text-sm text-ink-secondary">{user?.displayName}</p>
           </div>
-        ) : (
-          <div className="mt-4 space-y-4">
-            {orders.map((o) => (
-              <div key={o.orderId} className="rounded-2xl card-surface p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <Link
-                      href={`/character/${o.characterSlug}`}
-                      className="text-lg font-semibold text-white hover:text-neon-200"
-                    >
-                      {o.characterName}
-                    </Link>
-                    <p className="text-xs capitalize text-white/50">
-                      {o.licenseType.replace('_', ' ').toLowerCase()} ·{' '}
-                      {formatMoney(o.amountMinor, o.currency)} ·{' '}
-                      {new Date(o.purchasedAt).toLocaleDateString()}
+          <div className="flex items-center gap-3">
+            <span className="card-surface px-4 py-2 font-display text-sm font-bold text-lime">
+              {formatMoney(balance ?? 0)}
+            </span>
+            <button
+              onClick={() => {
+                logout();
+                router.push('/');
+              }}
+              className="btn-ghost !px-3 !py-2 !text-xs"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+
+        {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
+
+        <section className="mt-10">
+          <h2 className="font-display text-[10px] font-bold uppercase tracking-label text-ink-dim">
+            Licenses · {orders.length}
+          </h2>
+
+          {loading ? (
+            <p className="mt-6 text-ink-dim">Loading…</p>
+          ) : orders.length === 0 ? (
+            <div className="card-surface mt-4 border-dashed p-12 text-center">
+              <p className="text-ink-secondary">No licenses yet.</p>
+              <Link href="/" className="btn-lime mt-4 inline-block !text-xs">
+                Explore characters
+              </Link>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-4">
+              {orders.map((o) => (
+                <div key={o.orderId} className="card-surface p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <Link
+                        href={`/character/${o.characterSlug}`}
+                        className="font-display text-lg font-bold uppercase tracking-wide text-ink hover:text-lime"
+                      >
+                        {o.characterName}
+                      </Link>
+                      <p className="mt-1 text-[11px] font-medium uppercase tracking-label text-ink-dim">
+                        {o.licenseType.replace('_', ' ')} · {formatMoney(o.amountMinor, o.currency)}{' '}
+                        · {new Date(o.purchasedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-mono text-xs font-semibold text-lime">{o.certificate.serial}</p>
+                      <a
+                        href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'}/api/certificates/verify/${o.certificate.serial}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[10px] font-semibold uppercase tracking-label text-ink-dim hover:text-lime"
+                      >
+                        Verify ↗
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 border-t border-border-subtle pt-4">
+                    <p className="text-[10px] font-bold uppercase tracking-label text-ink-dim">
+                      Locked assets
                     </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-mono text-xs text-neon-300">{o.certificate.serial}</p>
-                    <a
-                      href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'}/api/certificates/verify/${o.certificate.serial}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[11px] text-white/40 hover:text-white/60"
-                    >
-                      Verify certificate ↗
-                    </a>
+                    {downloads[o.characterSlug] ? (
+                      <ul className="mt-2 space-y-1.5">
+                        {downloads[o.characterSlug]!.map((d) => (
+                          <li key={d.url}>
+                            <a
+                              href={d.url}
+                              className="text-sm font-medium text-lime hover:underline"
+                              download
+                            >
+                              ↓ {d.label}
+                            </a>
+                            <span className="ml-2 text-[10px] text-ink-dim">
+                              exp {new Date(d.expiresAt).toLocaleTimeString()}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <button
+                        onClick={() => fetchDownloads(o.characterSlug)}
+                        className="btn-ghost mt-2 !px-3 !py-1.5 !text-[10px]"
+                      >
+                        Get download links
+                      </button>
+                    )}
                   </div>
                 </div>
-
-                <div className="mt-4 border-t border-white/5 pt-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-white/40">
-                    Locked assets
-                  </p>
-                  {downloads[o.characterSlug] ? (
-                    <ul className="mt-2 space-y-1">
-                      {downloads[o.characterSlug]!.map((d) => (
-                        <li key={d.url}>
-                          <a
-                            href={d.url}
-                            className="text-sm text-accent hover:underline"
-                            download
-                          >
-                            ↓ {d.label}
-                          </a>
-                          <span className="ml-2 text-[10px] text-white/30">
-                            expires {new Date(d.expiresAt).toLocaleTimeString()}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <button
-                      onClick={() => fetchDownloads(o.characterSlug)}
-                      className="mt-2 rounded-full border border-white/15 px-3 py-1 text-xs text-white/70 hover:border-neon-400"
-                    >
-                      Get signed download links
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-    </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+    </>
   );
 }
