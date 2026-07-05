@@ -5,12 +5,10 @@ AI avatars / virtual influencers are discovered, licensed, and traded. Humans
 only **list** and **buy** — the platform automates discovery, licensing, payment
 custody (escrow), and delivery.
 
-> **Status: Phase 1 (MVP) scaffold.** This session delivers the monorepo
-> structure, the full Prisma data model, and a working, virtualised homepage
-> grid + character detail pages backed by a 120-character mock dataset. Payment
-> capture, escrow release logic, and the on-chain ledger are intentionally left
-> as documented interfaces pending product confirmation — see
-> [`docs/ASSUMPTIONS.md`](docs/ASSUMPTIONS.md).
+> **Status: Phase 1 MVP complete.** Discovery grid, auth, wallet checkout, escrow,
+> rights certificates, buyer dashboard, and signed asset delivery are implemented.
+> Production hardening (real Stripe/Razorpay, Postgres persistence, S3/R2) is
+> Phase 1.x polish — see [`docs/ASSUMPTIONS.md`](docs/ASSUMPTIONS.md).
 
 ---
 
@@ -94,39 +92,25 @@ works immediately with zero backend. Set it to `false` to hit the NestJS API.
 
 ---
 
-## Phase 1 scope (this session)
+## Phase 1 scope — complete
 
 Delivered:
 
 - ✅ Monorepo scaffold (web + api + shared + db)
-- ✅ Full Prisma data model for **all** core entities (Users/RBAC, Characters,
-  assets, LicenseTiers, Orders, RightsCertificates, Wallet/Ledger, Payments,
-  Commission engine, Reviews, Listing checklist, Moderation, and the AI-feed
-  social layer) — see [`packages/db/prisma/schema.prisma`](packages/db/prisma/schema.prisma).
-- ✅ Homepage grid: virtualised (smooth at 1000+), skeleton + blur-up, hover
-  reveal, and filters (gender, ethnicity, niche, style, license type, rating,
-  availability) + search + sort.
-- ✅ Character detail page: gallery, license tiers, gated/locked sheet section,
-  Buy / Make Offer / Commission CTAs, SynthID badge.
-- ✅ 120-character deterministic mock dataset + DB seed.
-- ✅ Ledger + escrow + payment **interfaces** with an in-memory double-entry
-  ledger reference implementation.
+- ✅ Full Prisma data model for all core entities
+- ✅ Homepage grid (120 characters, virtualised, filters, blur-up)
+- ✅ Character detail + **working Buy checkout UI** (wallet top-up → purchase)
+- ✅ **Auth:** JWT register/login + Google stub + RBAC guards
+- ✅ **Wallet top-up** → escrow hold → auto-release (30% take)
+- ✅ **Rights certificates** + public verify endpoint
+- ✅ **Buyer dashboard** — licenses, certificates, signed download links
+- ✅ **Signed expiring URLs** for locked assets (HMAC-gated download endpoint)
 
-Deferred pending confirmation (see `docs/ASSUMPTIONS.md`): ~~live payment capture,
-escrow **release trigger**, dispute split rules, and the take-rate schedule.~~
+Demo account: `buyer@synthetica.dev` / `demo1234`
 
-**Confirmed & wired (2026-07-05):**
-- Wallet top-up payment flow (Stripe/Razorpay → USER wallet)
-- Escrow hold → auto-release for digital goods
-- Flat **30%** platform take-rate
-- Append-only double-entry ledger (`InMemoryLedgerService` + `PrismaLedgerService`)
+### Key rules honoured
 
-### Key rules honoured in the model/UI
-
-- **Locked sheets** are referenced by storage key only and never appear in DTOs
-  or the DOM before purchase (`AssetKind` locked kinds + gated detail section).
-- **Previews** are watermarked/downsampled; the card + detail UI label them.
-- **Rights certificate** + **ledger** models are append-only and verifiable.
-- **SynthID / watermark** fingerprint fields on every character.
-- **Fully synthetic only**: signed IP declaration fields on `ListingChecklist`.
-```
+- Locked sheets never in DOM/network before purchase; signed URLs after license
+- Previews watermarked/downsampled
+- Append-only double-entry ledger; certificates anchor `ledgerHash`
+- SynthID/watermark fields on every character
