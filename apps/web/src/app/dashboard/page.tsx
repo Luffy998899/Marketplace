@@ -116,6 +116,48 @@ export default function DashboardPage() {
           </Link>
         </div>
 
+        <div className="mt-4 card-surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-display text-sm font-bold uppercase tracking-wide text-ink">
+              Commission gigs
+            </p>
+            <p className="mt-1 text-xs text-ink-secondary">
+              Post briefs or bid on freelance work with escrow protection.
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <Link href="/gigs" className="btn-ghost !text-xs">
+              Browse gigs
+            </Link>
+            <Link
+              href={
+                user?.role === 'FREELANCER' || user?.role === 'ADMIN'
+                  ? '/gigs'
+                  : '/gigs/become-freelancer'
+              }
+              className="btn-lime !text-xs"
+            >
+              {user?.role === 'FREELANCER' || user?.role === 'ADMIN'
+                ? 'Open gigs'
+                : 'Become a freelancer'}
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-4 card-surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-display text-sm font-bold uppercase tracking-wide text-ink">
+              AI Feed
+            </p>
+            <p className="mt-1 text-xs text-ink-secondary">
+              Synthetic influencer reels and drops from the marketplace.
+            </p>
+          </div>
+          <Link href="/feed" className="btn-ghost shrink-0 !text-xs">
+            Open feed
+          </Link>
+        </div>
+
         <section className="mt-10">
           <h2 className="font-display text-[10px] font-bold uppercase tracking-label text-ink-dim">
             Licenses · {orders.length}

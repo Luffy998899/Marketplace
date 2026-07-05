@@ -1,42 +1,90 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   PaymentProvider,
   type CreateTopUpIntentInput,
   type PaymentGateway,
   type PaymentIntentResult,
 } from '@acm/shared';
+import Stripe from 'stripe';
 import { randomUUID } from 'node:crypto';
 
-/** Dev stub — auto-succeeds top-ups. Swap for StripeGateway in production. */
+/** Uses Stripe when STRIPE_SECRET_KEY is set; otherwise auto-succeeds (dev). */
 @Injectable()
-export class StubStripeGateway implements PaymentGateway {
+export class StripeGateway implements PaymentGateway {
   readonly provider = PaymentProvider.STRIPE;
+  private readonly log = new Logger(StripeGateway.name);
+  private readonly stripe: Stripe | null;
+
+  constructor() {
+    this.stripe = process.env.STRIPE_SECRET_KEY
+      ? new Stripe(process.env.STRIPE_SECRET_KEY)
+      : null;
+  }
+
+  get isLive(): boolean {
+    return !!this.stripe;
+  }
 
   async createTopUpIntent(input: CreateTopUpIntentInput): Promise<PaymentIntentResult> {
+    if (!this.stripe) {
+      return {
+        provider: this.provider,
+        providerRef: `pi_stub_${randomUUID()}`,
+        clientSecret: `stub_secret_${input.topUpId}`,
+        status: 'SUCCEEDED',
+      };
+    }
+
+    const intent = await this.stripe.paymentIntents.create({
+      amount: input.amount.amountMinor,
+      currency: input.amount.currency.toLowerCase(),
+      metadata: { topUpId: input.topUpId, userId: input.userId },
+      automatic_payment_methods: { enabled: true },
+      confirm: true,
+      payment_method: 'pm_card_visa',
+    });
+
     return {
       provider: this.provider,
-      providerRef: `pi_stub_${randomUUID()}`,
-      clientSecret: `stub_secret_${input.topUpId}`,
-      status: 'SUCCEEDED',
+      providerRef: intent.id,
+      clientSecret: intent.client_secret ?? undefined,
+      status: intent.status === 'succeeded' ? 'SUCCEEDED' : 'PROCESSING',
     };
   }
 
-  async verifyWebhook(): Promise<{
-    providerRef: string;
-    status: PaymentIntentResult['status'];
-    topUpId?: string;
-  }> {
-    return { providerRef: 'stub', status: 'SUCCEEDED' };
+  async verifyWebhook(
+    rawBody: string | Buffer,
+    signature: string,
+  ): Promise<{ providerRef: string; status: PaymentIntentResult['status']; topUpId?: string }> {
+    if (!this.stripe || !process.env.STRIPE_WEBHOOK_SECRET) {
+      return { providerRef: 'stub', status: 'SUCCEEDED' };
+    }
+    const event = this.stripe.webhooks.constructEvent(
+      rawBody,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET,
+    );
+    if (event.type === 'payment_intent.succeeded') {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      return {
+        providerRef: pi.id,
+        status: 'SUCCEEDED',
+        topUpId: pi.metadata.topUpId,
+      };
+    }
+    return { providerRef: 'unknown', status: 'FAILED' };
   }
 
-  async refund(): Promise<{ ok: boolean }> {
+  async refund(providerRef: string): Promise<{ ok: boolean }> {
+    if (!this.stripe) return { ok: true };
+    await this.stripe.refunds.create({ payment_intent: providerRef });
     return { ok: true };
   }
 }
 
-/** Dev stub — auto-succeeds top-ups. Swap for RazorpayGateway in production. */
+/** Dev stub — auto-succeeds top-ups when Razorpay keys absent. */
 @Injectable()
-export class StubRazorpayGateway implements PaymentGateway {
+export class RazorpayGateway implements PaymentGateway {
   readonly provider = PaymentProvider.RAZORPAY;
 
   async createTopUpIntent(input: CreateTopUpIntentInput): Promise<PaymentIntentResult> {

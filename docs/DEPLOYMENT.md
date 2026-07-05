@@ -1,6 +1,7 @@
 # Synthetica — Deployment & local complete stack
 
-This guide runs the **full marketplace** on your PC: buyer checkout, creator studio, moderation, and certificate verification.
+This guide runs the **full marketplace** on your PC: buyer checkout, creator studio, commission gigs,
+social feed, reviews, moderation, and certificate verification.
 
 ## Quick start (recommended)
 
@@ -25,6 +26,7 @@ Open http://localhost:3000
 | Buyer | buyer@synthetica.dev | demo1234 |
 | Creator | creator@synthetica.dev | demo1234 |
 | Admin | admin@synthetica.dev | demo1234 |
+| Freelancer | freelancer@synthetica.dev | demo1234 |
 
 ## Full user journeys
 
@@ -33,12 +35,27 @@ Open http://localhost:3000
 2. Top up wallet if needed → confirm purchase
 3. Dashboard → download locked assets (signed URLs)
 4. Click **Verify certificate** on any license
+5. Post a review on the character detail page (license holders only)
 
 ### Creator
 1. Sign in → **Studio** → **New character**
 2. Complete 5-step wizard (upload files or use sample URLs)
 3. Submit → goes live (auto-approve on by default)
 4. Earnings accumulate in **Payout pending** on studio dashboard
+
+### Freelancer (Phase 3)
+1. Sign in → **Gigs** → **Become a freelancer** (or use demo freelancer account)
+2. Browse open briefs → place a bid
+3. Buyer assigns you → deliver work URL → buyer approves → escrow releases
+
+### Buyer posting a gig
+1. Sign in → **Gigs** → **Post a brief**
+2. Freelancers bid → assign a bid → review delivery → approve or request revision
+
+### Social feed (Phase 4)
+1. Open **Feed** from header or dashboard
+2. Scroll synthetic influencer reels and image posts
+3. Like posts when signed in
 
 ### Admin / moderation
 1. Set `MODERATION_AUTO_APPROVE=false` in API `.env`
@@ -53,7 +70,9 @@ cp .env.example .env
 pnpm db:generate && pnpm db:migrate && pnpm db:seed
 ```
 
-The API currently uses an **in-memory store** by default (zero Docker required). The Prisma schema + seed are ready when you wire `USE_PRISMA=true` for production persistence.
+The API uses an **in-memory store** by default (zero Docker required). Set `USE_PRISMA=true` to
+persist via Postgres. Set `S3_ENDPOINT` for MinIO uploads, `MEILI_HOST` for search indexing, and
+`STRIPE_SECRET_KEY` for live Stripe top-ups.
 
 ## Environment reference
 
@@ -61,17 +80,22 @@ The API currently uses an **in-memory store** by default (zero Docker required).
 |----------|---------|---------|
 | `NEXT_PUBLIC_USE_MOCK_DATA` | `true` | Web grid from local mock vs API |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | API base URL |
+| `USE_PRISMA` | `false` | In-memory vs Postgres persistence |
 | `MODERATION_AUTO_APPROVE` | `true` | Instant live on submit vs admin queue |
 | `API_PUBLIC_URL` | `http://localhost:4000` | Upload + download URL base |
 | `SIGNED_URL_TTL_SECONDS` | `300` | Locked asset link expiry |
+| `S3_ENDPOINT` | — | MinIO/S3 for uploads (local `uploads/` if unset) |
+| `MEILI_HOST` | — | Meilisearch character search |
+| `STRIPE_SECRET_KEY` | — | Live Stripe gateway (stub if unset) |
 
 ## Production checklist
 
 - [ ] Set strong `JWT_ACCESS_SECRET`
 - [ ] `MODERATION_AUTO_APPROVE=false`
-- [ ] Wire Stripe/Razorpay (replace stubs in `payment-gateways.ts`)
-- [ ] Persist to Postgres via Prisma
-- [ ] Object storage on S3/R2 (replace local `uploads/` folder)
+- [ ] `USE_PRISMA=true` + run migrations
+- [ ] `S3_ENDPOINT` + bucket for object storage
+- [ ] `STRIPE_SECRET_KEY` for live payments
+- [ ] `MEILI_HOST` for search at scale
 - [ ] Enable HTTPS + CORS allowlist
 
 ## API routes
@@ -85,4 +109,15 @@ The API currently uses an **in-memory store** by default (zero Docker required).
 | Certificates | `/api/certificates/verify/:serial` |
 | Creator Studio | `/api/studio/*` |
 | Moderation | `/api/moderation/*` |
+| Commissions | `/api/commissions/*` |
+| Feed | `/api/feed/*` |
+| Reviews | `/api/reviews/*` |
 | Health | `/api/health` |
+
+## Health check
+
+```bash
+curl http://localhost:4000/api/health | jq
+```
+
+Returns all phase flags and infrastructure mode.

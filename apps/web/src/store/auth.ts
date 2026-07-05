@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { UserRole } from '@acm/shared';
-import { authApi, setToken, getToken, studioApi } from '@/lib/api';
+import { authApi, commissionsApi, setToken, getToken, studioApi } from '@/lib/api';
 
 interface AuthUser {
   id: string;
@@ -19,8 +19,10 @@ interface AuthState {
   register: (email: string, password: string, displayName: string) => Promise<void>;
   googleLogin: () => Promise<void>;
   becomeCreator: () => Promise<void>;
+  becomeFreelancer: () => Promise<void>;
   logout: () => void;
   isCreator: () => boolean;
+  isFreelancer: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -68,6 +70,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user });
   },
 
+  becomeFreelancer: async () => {
+    const user = await commissionsApi.becomeFreelancer();
+    set({ user });
+  },
+
   logout: () => {
     setToken(null);
     set({ user: null });
@@ -76,5 +83,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isCreator: () => {
     const role = get().user?.role;
     return role === UserRole.CREATOR || role === UserRole.ADMIN;
+  },
+
+  isFreelancer: () => {
+    const role = get().user?.role;
+    return role === UserRole.FREELANCER || role === UserRole.ADMIN;
   },
 }));

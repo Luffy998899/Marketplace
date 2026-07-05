@@ -79,7 +79,7 @@ export class StudioController {
       limits: { fileSize: 50 * 1024 * 1024 },
     }),
   )
-  uploadFile(
+  async uploadFile(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
@@ -88,7 +88,7 @@ export class StudioController {
     if (!file) throw new BadRequestException('File is required');
     if (!kind) throw new BadRequestException('Asset kind is required');
     const assetKind = kind as AssetKind;
-    const url = this.storage.saveListingAsset(id, assetKind, file);
+    const url = await this.storage.saveListingAsset(id, assetKind, file);
     return this.studio.uploadAsset(user.sub, id, { kind: assetKind, url });
   }
 

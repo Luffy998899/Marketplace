@@ -17,6 +17,16 @@ export function SiteHeader() {
             Synthetica
           </span>
         </Link>
+
+        <nav className="hidden items-center gap-1 sm:flex">
+          <Link href="/feed" className="btn-ghost !px-3 !py-1.5 !text-[10px] sm:!text-xs">
+            Feed
+          </Link>
+          <Link href="/gigs" className="btn-ghost !px-3 !py-1.5 !text-[10px] sm:!text-xs">
+            Gigs
+          </Link>
+        </nav>
+
         {!loading &&
           (user ? (
             <div className="flex items-center gap-2">

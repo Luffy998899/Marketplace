@@ -210,3 +210,54 @@ export const certificatesApi = {
       message?: string;
     }>(`/certificates/verify/${encodeURIComponent(serial)}`),
 };
+
+export const commissionsApi = {
+  open: () => api<import('@acm/shared').CommissionDTO[]>('/commissions/open'),
+  mine: () => api<import('@acm/shared').CommissionDTO[]>('/commissions/me'),
+  get: (id: string) => api<import('@acm/shared').CommissionDTO>(`/commissions/${id}`),
+  create: (body: { title: string; brief: string; budgetMinor: number; deadline?: string }) =>
+    api<import('@acm/shared').CommissionDTO>('/commissions', { method: 'POST', body: JSON.stringify(body) }),
+  bid: (id: string, body: { amountMinor: number; message?: string; etaDays?: number }) =>
+    api<import('@acm/shared').CommissionDTO>(`/commissions/${id}/bids`, { method: 'POST', body: JSON.stringify(body) }),
+  assign: (id: string, bidId: string) =>
+    api<import('@acm/shared').CommissionDTO>(`/commissions/${id}/assign/${bidId}`, { method: 'POST' }),
+  deliver: (id: string, deliverableUrl: string) =>
+    api<import('@acm/shared').CommissionDTO>(`/commissions/${id}/deliver`, {
+      method: 'POST',
+      body: JSON.stringify({ deliverableUrl }),
+    }),
+  approve: (id: string) =>
+    api<import('@acm/shared').CommissionDTO>(`/commissions/${id}/approve`, { method: 'POST' }),
+  revision: (id: string, notes: string) =>
+    api<import('@acm/shared').CommissionDTO>(`/commissions/${id}/revision`, {
+      method: 'POST',
+      body: JSON.stringify({ notes }),
+    }),
+  becomeFreelancer: () =>
+    api<{ id: string; email: string; displayName: string; role: string }>(
+      '/auth/become-freelancer',
+      { method: 'POST' },
+    ),
+};
+
+export const feedApi = {
+  list: (page = 1) => api<{ items: import('@acm/shared').FeedPostDTO[]; hasMore: boolean }>(`/feed?page=${page}`),
+  byCharacter: (slug: string) => api<import('@acm/shared').FeedPostDTO[]>(`/feed/character/${slug}`),
+  like: (id: string) => api<import('@acm/shared').FeedPostDTO>(`/feed/${id}/like`, { method: 'POST' }),
+  comments: (id: string) => api<import('@acm/shared').FeedCommentDTO[]>(`/feed/${id}/comments`),
+  comment: (id: string, body: string) =>
+    api<import('@acm/shared').FeedCommentDTO>(`/feed/${id}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    }),
+};
+
+export const reviewsApi = {
+  list: (slug: string) =>
+    api<{
+      reviews: import('@acm/shared').ReviewDTO[];
+      aggregate: { rating: number; count: number };
+    }>(`/reviews/character/${slug}`),
+  create: (body: { characterSlug: string; rating: number; body?: string }) =>
+    api<import('@acm/shared').ReviewDTO>('/reviews', { method: 'POST', body: JSON.stringify(body) }),
+};

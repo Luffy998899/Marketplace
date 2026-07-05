@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import {
   MOCK_CHARACTERS,
   getMockCharacterBySlug,
@@ -7,20 +7,85 @@ import {
   type CharacterFilter,
   type Paginated,
 } from '@acm/shared';
+import { PrismaService } from '../prisma/prisma.service';
+import { SearchService } from '../search/search.service';
 import { StudioService } from '../studio/studio.service';
 
 @Injectable()
-export class CharactersService {
+export class CharactersService implements OnModuleInit {
   private readonly mockLive = MOCK_CHARACTERS.filter((c) => c.status === 'LIVE');
 
-  constructor(private readonly studio: StudioService) {}
+  constructor(
+    private readonly studio: StudioService,
+    private readonly prisma: PrismaService,
+    private readonly search: SearchService,
+  ) {}
 
-  list(filter: CharacterFilter): Paginated<CharacterCardDTO> {
+  async onModuleInit() {
+    if (this.search.enabled) {
+      await this.search.indexCharacters(this.mockLive);
+    }
+  }
+
+  private async allLiveCards(): Promise<CharacterCardDTO[]> {
+    const studioCards = this.studio.getLiveCards();
+    if (this.prisma.enabled) {
+      const rows = await this.prisma.character.findMany({
+        where: { status: 'LIVE' },
+        include: { licenseTiers: true, assets: true, org: true, creator: true },
+      });
+      const dbCards: CharacterCardDTO[] = rows.map((c) => {
+        const cover = c.assets.find((a) => a.kind === 'PREVIEW_IMAGE');
+        const tiers = c.licenseTiers.filter((t) => t.isActive);
+        return {
+          id: c.id,
+          slug: c.slug,
+          name: c.name,
+          tagline: c.tagline ?? undefined,
+          category: c.category,
+          niche: c.niche ?? undefined,
+          style: c.style ?? undefined,
+          gender: c.gender ?? undefined,
+          ethnicity: c.ethnicity ?? undefined,
+          tags: c.tags,
+          rating: c.rating,
+          ratingCount: c.ratingCount,
+          status: c.status as CharacterCardDTO['status'],
+          ownerName: c.creator?.displayName ?? c.org?.name ?? 'Unknown',
+          verified: c.org?.verified ?? false,
+          cover: {
+            id: cover?.id ?? c.id,
+            kind: 'PREVIEW_IMAGE',
+            url: cover?.publicUrl ?? `https://picsum.photos/seed/${c.slug}/800/1000`,
+            width: cover?.width ?? 800,
+            height: cover?.height ?? 1000,
+            blurDataUrl: cover?.blurDataUrl ?? undefined,
+          },
+          fromPriceMinor: tiers[0]?.priceMinor ?? 100,
+          currency: tiers[0]?.currency ?? 'USD',
+          licenseTypes: tiers.map((t) => t.type as CharacterCardDTO['licenseTypes'][0]),
+          available: true,
+        };
+      });
+      return [...dbCards, ...studioCards];
+    }
+    return [...this.mockLive, ...studioCards];
+  }
+
+  async list(filter: CharacterFilter): Promise<Paginated<CharacterCardDTO>> {
     const page = filter.page ?? 1;
     const pageSize = filter.pageSize ?? 24;
-    let items = [...this.mockLive, ...this.studio.getLiveCards()];
+    let items = await this.allLiveCards();
 
-    if (filter.q) {
+    if (filter.q && this.search.enabled) {
+      const slugs = await this.search.search(filter.q, 100);
+      if (slugs.length) {
+        const slugSet = new Set(slugs);
+        items = items.filter((c) => slugSet.has(c.slug));
+      }
+    }
+
+    if (filter.q && !this.search.enabled) {
       const q = filter.q.toLowerCase();
       items = items.filter(
         (c) =>
@@ -29,6 +94,7 @@ export class CharactersService {
           (c.tagline?.toLowerCase().includes(q) ?? false),
       );
     }
+
     if (filter.gender?.length) items = items.filter((c) => filter.gender!.includes(c.gender ?? ''));
     if (filter.ethnicity?.length)
       items = items.filter((c) => filter.ethnicity!.includes(c.ethnicity ?? ''));

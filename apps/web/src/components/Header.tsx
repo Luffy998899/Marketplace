@@ -54,6 +54,13 @@ export function Header({ total }: { total?: number }) {
           ))}
         </select>
 
+        <Link href="/feed" className="btn-ghost hidden !px-2 !py-1.5 !text-[10px] shrink-0 md:inline-flex sm:!px-3 sm:!text-xs">
+          Feed
+        </Link>
+        <Link href="/gigs" className="btn-ghost hidden !px-2 !py-1.5 !text-[10px] shrink-0 md:inline-flex sm:!px-3 sm:!text-xs">
+          Gigs
+        </Link>
+
         {!loading &&
           (user ? (
             <div className="flex shrink-0 items-center gap-2">

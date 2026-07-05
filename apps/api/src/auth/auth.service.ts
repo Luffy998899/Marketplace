@@ -69,6 +69,19 @@ export class AuthService {
     };
     this.users.set(adminId, admin);
     this.byEmail.set(admin.email.toLowerCase(), adminId);
+
+    const freelancerId = 'user_demo_freelancer';
+    const freelancer: UserRecord = {
+      id: freelancerId,
+      email: 'freelancer@synthetica.dev',
+      passwordHash: bcrypt.hashSync('demo1234', 10),
+      displayName: 'Demo Freelancer',
+      role: UserRole.FREELANCER,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    };
+    this.users.set(freelancerId, freelancer);
+    this.byEmail.set(freelancer.email.toLowerCase(), freelancerId);
   }
 
   findById(id: string): UserRecord | undefined {
@@ -150,6 +163,16 @@ export class AuthService {
       return this.toDto(user);
     }
     user.role = UserRole.CREATOR;
+    return this.toDto(user);
+  }
+
+  becomeFreelancer(userId: string): AuthUserDTO {
+    const user = this.users.get(userId);
+    if (!user) throw new UnauthorizedException();
+    if (user.role === UserRole.FREELANCER || user.role === UserRole.ADMIN) {
+      return this.toDto(user);
+    }
+    user.role = UserRole.FREELANCER;
     return this.toDto(user);
   }
 

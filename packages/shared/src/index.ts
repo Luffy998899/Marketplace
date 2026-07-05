@@ -9,3 +9,6 @@ export * from './escrow.js';
 export * from './payments.js';
 export * from './mock.js';
 export * from './listing-dto.js';
+export * from './commission-dto.js';
+export * from './feed-dto.js';
+export * from './review-dto.js';

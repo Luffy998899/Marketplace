@@ -4,12 +4,14 @@ import { formatMoney, type CharacterDetailDTO } from '@acm/shared';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { CheckoutPanel } from './CheckoutPanel';
+import { CharacterReviews } from './CharacterReviews';
 
 /** Sticky purchase column with scroll-triggered gallery on character detail. */
 export function CharacterDetailView({ character }: { character: CharacterDetailDTO }) {
   const c = character;
 
   return (
+    <>
     <div className="grid gap-10 lg:grid-cols-[1.15fr_1fr] lg:gap-12">
       <motion.div
         initial={{ opacity: 0, x: -16 }}
@@ -106,5 +108,7 @@ export function CharacterDetailView({ character }: { character: CharacterDetailD
         </div>
       </motion.div>
     </div>
+    <CharacterReviews slug={c.slug} />
+    </>
   );
 }
