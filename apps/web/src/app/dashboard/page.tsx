@@ -99,6 +99,23 @@ export default function DashboardPage() {
 
         {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
 
+        <div className="mt-6 card-surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-display text-sm font-bold uppercase tracking-wide text-ink">
+              Creator Studio
+            </p>
+            <p className="mt-1 text-xs text-ink-secondary">
+              List synthetic characters and earn on every license sold.
+            </p>
+          </div>
+          <Link
+            href={user?.role === 'CREATOR' || user?.role === 'ADMIN' ? '/studio' : '/studio/become-creator'}
+            className="btn-lime shrink-0 !text-xs"
+          >
+            {user?.role === 'CREATOR' || user?.role === 'ADMIN' ? 'Open studio' : 'Become a creator'}
+          </Link>
+        </div>
+
         <section className="mt-10">
           <h2 className="font-display text-[10px] font-bold uppercase tracking-label text-ink-dim">
             Licenses · {orders.length}

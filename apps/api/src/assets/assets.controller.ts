@@ -14,6 +14,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { CurrentUser, JwtPayload } from '../auth/auth.decorators';
 import { JwtAuthGuard } from '../auth/auth.guards';
 import { OrdersService } from '../orders/orders.service';
+import { StudioService } from '../studio/studio.service';
 
 const LOCKED_LABELS: Record<string, string> = {
   [AssetKind.CHARACTER_SHEET]: 'Character sheet / shot bible',
@@ -29,7 +30,10 @@ export class AssetsController {
   private readonly apiBase =
     process.env.API_PUBLIC_URL ?? `http://localhost:${process.env.API_PORT ?? 4000}`;
 
-  constructor(private readonly orders: OrdersService) {}
+  constructor(
+    private readonly orders: OrdersService,
+    private readonly studio: StudioService,
+  ) {}
 
   /** List signed, expiring download URLs for locked assets (license required). */
   @Get(':characterSlug/downloads')
@@ -43,7 +47,8 @@ export class AssetsController {
       throw new ForbiddenException('No valid license for this character');
     }
 
-    const character = getMockCharacterBySlug(characterSlug);
+    const character =
+      this.studio.getDetailBySlug(characterSlug) ?? getMockCharacterBySlug(characterSlug);
     if (!character) throw new NotFoundException('Character not found');
 
     const expiresAt = new Date(Date.now() + this.ttlSeconds * 1000).toISOString();

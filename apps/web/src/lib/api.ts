@@ -95,3 +95,72 @@ export const assetsApi = {
       Array<{ url: string; expiresAt: string; assetKind: string; label: string }>
     >(`/assets/${characterSlug}/downloads`),
 };
+
+export const studioApi = {
+  becomeCreator: () =>
+    api<{ id: string; email: string; displayName: string; role: string }>(
+      '/auth/become-creator',
+      { method: 'POST' },
+    ),
+  stats: () =>
+    api<{
+      totalListings: number;
+      liveListings: number;
+      draftListings: number;
+      inReviewListings: number;
+      payoutPendingMinor: number;
+      currency: string;
+    }>('/studio/stats'),
+  listings: () =>
+    api<
+      Array<{
+        id: string;
+        slug: string;
+        name: string;
+        status: string;
+        niche: string;
+        checklist: { currentStep: string; moderationPassed: boolean };
+        updatedAt: string;
+      }>
+    >('/studio/listings'),
+  getListing: (id: string) =>
+    api<import('@acm/shared').CreatorListingDTO>(`/studio/listings/${id}`),
+  createListing: (body: {
+    name: string;
+    tagline?: string;
+    niche: string;
+    style: string;
+    gender: string;
+    ethnicity: string;
+  }) =>
+    api<import('@acm/shared').CreatorListingDTO>('/studio/listings', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  updateListing: (id: string, body: Record<string, string | undefined>) =>
+    api<import('@acm/shared').CreatorListingDTO>(`/studio/listings/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+  confirmIdentity: (id: string) =>
+    api<import('@acm/shared').CreatorListingDTO>(`/studio/listings/${id}/identity`, {
+      method: 'POST',
+    }),
+  uploadAsset: (id: string, body: { kind: string; url: string; label?: string }) =>
+    api<import('@acm/shared').CreatorListingDTO>(`/studio/listings/${id}/assets`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  stampSynthId: (id: string) =>
+    api<import('@acm/shared').CreatorListingDTO>(`/studio/listings/${id}/synthid`, {
+      method: 'POST',
+    }),
+  signRights: (id: string) =>
+    api<import('@acm/shared').CreatorListingDTO>(`/studio/listings/${id}/rights`, {
+      method: 'POST',
+    }),
+  submit: (id: string) =>
+    api<import('@acm/shared').CreatorListingDTO>(`/studio/listings/${id}/submit`, {
+      method: 'POST',
+    }),
+};

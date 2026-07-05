@@ -43,6 +43,19 @@ export class AuthService {
     };
     this.users.set(id, record);
     this.byEmail.set(record.email.toLowerCase(), id);
+
+    const creatorId = 'user_demo_creator';
+    const creator: UserRecord = {
+      id: creatorId,
+      email: 'creator@synthetica.dev',
+      passwordHash: bcrypt.hashSync('demo1234', 10),
+      displayName: 'Demo Creator',
+      role: UserRole.CREATOR,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    };
+    this.users.set(creatorId, creator);
+    this.byEmail.set(creator.email.toLowerCase(), creatorId);
   }
 
   findById(id: string): UserRecord | undefined {
@@ -114,6 +127,16 @@ export class AuthService {
   me(userId: string): AuthUserDTO {
     const user = this.users.get(userId);
     if (!user) throw new UnauthorizedException();
+    return this.toDto(user);
+  }
+
+  becomeCreator(userId: string): AuthUserDTO {
+    const user = this.users.get(userId);
+    if (!user) throw new UnauthorizedException();
+    if (user.role === UserRole.CREATOR || user.role === UserRole.ADMIN) {
+      return this.toDto(user);
+    }
+    user.role = UserRole.CREATOR;
     return this.toDto(user);
   }
 

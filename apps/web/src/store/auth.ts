@@ -1,7 +1,8 @@
 'use client';
 
 import { create } from 'zustand';
-import { authApi, setToken, getToken } from '@/lib/api';
+import { UserRole } from '@acm/shared';
+import { authApi, setToken, getToken, studioApi } from '@/lib/api';
 
 interface AuthUser {
   id: string;
@@ -17,10 +18,12 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, displayName: string) => Promise<void>;
   googleLogin: () => Promise<void>;
+  becomeCreator: () => Promise<void>;
   logout: () => void;
+  isCreator: () => boolean;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   loading: true,
 
@@ -60,8 +63,18 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user: res.user });
   },
 
+  becomeCreator: async () => {
+    const user = await studioApi.becomeCreator();
+    set({ user });
+  },
+
   logout: () => {
     setToken(null);
     set({ user: null });
+  },
+
+  isCreator: () => {
+    const role = get().user?.role;
+    return role === UserRole.CREATOR || role === UserRole.ADMIN;
   },
 }));

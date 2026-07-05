@@ -19,9 +19,16 @@ export function SiteHeader() {
         </Link>
         {!loading &&
           (user ? (
-            <Link href="/dashboard" className="btn-lime !px-4 !py-2 !text-xs">
-              Dashboard
-            </Link>
+            <div className="flex items-center gap-2">
+              {(user.role === 'CREATOR' || user.role === 'ADMIN') && (
+                <Link href="/studio" className="btn-ghost !px-3 !py-1.5 !text-[10px] sm:!text-xs">
+                  Studio
+                </Link>
+              )}
+              <Link href="/dashboard" className="btn-lime !px-4 !py-2 !text-xs">
+                Dashboard
+              </Link>
+            </div>
           ) : (
             <Link href="/login" className="btn-ghost !px-4 !py-2 !text-xs">
               Sign in

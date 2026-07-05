@@ -5,9 +5,9 @@ AI avatars / virtual influencers are discovered, licensed, and traded. Humans
 only **list** and **buy** — the platform automates discovery, licensing, payment
 custody (escrow), and delivery.
 
-> **Status: Phase 1 MVP complete.** Discovery grid, auth, wallet checkout, escrow,
-> rights certificates, buyer dashboard, and signed asset delivery are implemented.
-> Production hardening (real Stripe/Razorpay, Postgres persistence, S3/R2) is
+> **Status: Phase 1 MVP complete · Phase 2 Creator Studio in progress.** Discovery grid,
+> auth, wallet checkout, escrow, buyer dashboard, and Creator Studio listing wizard are
+> implemented. Production hardening (real Stripe/Razorpay, Postgres persistence, S3/R2) is
 > Phase 1.x polish — see [`docs/ASSUMPTIONS.md`](docs/ASSUMPTIONS.md).
 
 ---
@@ -107,6 +107,7 @@ Delivered:
 - ✅ **Signed expiring URLs** for locked assets (HMAC-gated download endpoint)
 
 Demo account: `buyer@synthetica.dev` / `demo1234`
+Demo creator: `creator@synthetica.dev` / `demo1234`
 
 ### Key rules honoured
 
@@ -114,3 +115,26 @@ Demo account: `buyer@synthetica.dev` / `demo1234`
 - Previews watermarked/downsampled
 - Append-only double-entry ledger; certificates anchor `ledgerHash`
 - SynthID/watermark fields on every character
+
+---
+
+## Phase 2 — Creator Studio (in progress)
+
+Delivered:
+
+- ✅ Creator role + `POST /auth/become-creator`
+- ✅ Studio API — listing CRUD, 5-step wizard (identity → assets → SynthID → rights → moderation)
+- ✅ Creator Studio UI at `/studio` — dashboard, new listing, step wizard
+- ✅ Live creator listings merged into marketplace catalog (requires API + `NEXT_PUBLIC_USE_MOCK_DATA=false`)
+- ✅ Seller payouts route to creator wallet (`PAYOUT_PENDING`, 70% net)
+
+**Try it locally:**
+
+```bash
+pnpm dev:api    # :4000
+pnpm dev:web    # :3000 — set NEXT_PUBLIC_USE_MOCK_DATA=false in apps/web/.env.local
+```
+
+1. Sign in as `creator@synthetica.dev` / `demo1234` (or register, then visit `/studio/become-creator`)
+2. Create a listing → run the 5-step wizard (use “Upload sample assets” for quick demo)
+3. Submit — auto-approved in dev → character appears on homepage grid

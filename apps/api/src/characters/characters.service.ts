@@ -7,18 +7,18 @@ import {
   type CharacterFilter,
   type Paginated,
 } from '@acm/shared';
+import { StudioService } from '../studio/studio.service';
 
-// Phase 1: serves the deterministic mock dataset. Swap the source for Prisma
-// (@acm/db) + Meilisearch once the DB is provisioned — the DTO contract and
-// filtering semantics stay identical, so the web app needs no changes.
 @Injectable()
 export class CharactersService {
-  private readonly all: CharacterCardDTO[] = MOCK_CHARACTERS;
+  private readonly mockLive = MOCK_CHARACTERS.filter((c) => c.status === 'LIVE');
+
+  constructor(private readonly studio: StudioService) {}
 
   list(filter: CharacterFilter): Paginated<CharacterCardDTO> {
     const page = filter.page ?? 1;
     const pageSize = filter.pageSize ?? 24;
-    let items = this.all.filter((c) => c.status === 'LIVE');
+    let items = [...this.mockLive, ...this.studio.getLiveCards()];
 
     if (filter.q) {
       const q = filter.q.toLowerCase();
@@ -68,6 +68,6 @@ export class CharactersService {
   }
 
   getBySlug(slug: string): CharacterDetailDTO | null {
-    return getMockCharacterBySlug(slug);
+    return this.studio.getDetailBySlug(slug) ?? getMockCharacterBySlug(slug);
   }
 }

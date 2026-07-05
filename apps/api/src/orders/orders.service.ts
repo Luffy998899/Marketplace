@@ -11,6 +11,7 @@ import {
 import { createHash, randomUUID } from 'node:crypto';
 import { EscrowServiceImpl } from '../ledger/escrow.service';
 import { InMemoryLedgerService } from '../ledger/ledger.service';
+import { StudioService } from '../studio/studio.service';
 
 export interface PurchaseInput {
   buyerId: string;
@@ -28,10 +29,11 @@ export class OrdersService {
   constructor(
     private readonly escrow: EscrowServiceImpl,
     private readonly ledger: InMemoryLedgerService,
+    private readonly studio: StudioService,
   ) {}
 
   async purchase(input: PurchaseInput): Promise<PurchaseResult> {
-    const character = getMockCharacterBySlug(input.characterSlug);
+    const character = this.resolveCharacter(input.characterSlug);
     if (!character) throw new NotFoundException('Character not found');
 
     const tier = character.licenseTiers.find((t) => t.id === input.licenseTierId);
@@ -125,7 +127,13 @@ export class OrdersService {
     return { valid: false };
   }
 
+  private resolveCharacter(slug: string): CharacterDetailDTO | null {
+    return this.studio.getDetailBySlug(slug) ?? getMockCharacterBySlug(slug);
+  }
+
   private resolvePayeeId(character: CharacterDetailDTO): string {
+    const creatorId = this.studio.getCreatorIdForSlug(character.slug);
+    if (creatorId) return creatorId;
     return `org_payee_${character.ownerName.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;
   }
 

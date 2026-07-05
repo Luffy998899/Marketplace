@@ -19,6 +19,9 @@ export function SiteFooter() {
           <Link href="/dashboard" className="opacity-80 hover:opacity-100">
             Dashboard
           </Link>
+          <Link href="/studio" className="opacity-80 hover:opacity-100">
+            Creator Studio
+          </Link>
           <Link href="/login" className="opacity-80 hover:opacity-100">
             Sign in
           </Link>
