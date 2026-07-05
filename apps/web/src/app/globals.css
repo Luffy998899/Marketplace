@@ -196,6 +196,23 @@ body {
   animation: float_delay 22s ease-in-out infinite;
 }
 
+.marquee-track {
+  animation: marquee 40s linear infinite;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 ::selection {
   background: rgba(209, 254, 23, 0.25);
   color: #f7f7f8;

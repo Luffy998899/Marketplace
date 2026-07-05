@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { SiteFooter } from '@/components/SiteFooter';
+import { TopLoader } from '@/components/TopLoader';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const spaceGrotesk = Space_Grotesk({
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <body className="bg-cinema bg-vignette min-h-screen font-sans antialiased">
         <div className="relative z-10 flex min-h-screen flex-col">
+          <TopLoader />
           <Providers>{children}</Providers>
           <SiteFooter />
         </div>

@@ -8,6 +8,7 @@ import { CharacterGrid } from '@/components/CharacterGrid';
 import { FeaturedStrip } from '@/components/FeaturedStrip';
 import { FilterRail } from '@/components/FilterRail';
 import { Header } from '@/components/Header';
+import { NicheMarquee } from '@/components/NicheMarquee';
 import { useFilterStore } from '@/store/filters';
 
 export default function HomePage() {
@@ -62,6 +63,8 @@ export default function HomePage() {
             <span>SynthID verified</span>
           </div>
         </motion.div>
+
+        <NicheMarquee />
       </section>
 
       <div
