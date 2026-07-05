@@ -1,0 +1,29 @@
+{
+  "name": "ai-character-marketplace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The world's first AI Character Marketplace — discover, license, and trade fully synthetic AI characters.",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel -r --filter \"./apps/*\" dev",
+    "dev:web": "pnpm --filter @acm/web dev",
+    "dev:api": "pnpm --filter @acm/api dev",
+    "build": "pnpm -r build",
+    "build:shared": "pnpm --filter @acm/shared build",
+    "build:db": "pnpm --filter @acm/db build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "db:generate": "pnpm --filter @acm/db generate",
+    "db:migrate": "pnpm --filter @acm/db migrate",
+    "db:seed": "pnpm --filter @acm/db seed",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4"
+  }
+}

@@ -1,0 +1,591 @@
+// ============================================================================
+// AI Character Marketplace — Prisma data model
+// ============================================================================
+// Notes:
+//  - Money is stored as integer minor units (cents) to avoid float drift.
+//    `currency` is tracked alongside every amount.
+//  - The ledger is append-only and double-entry (see LedgerEntry). It is the
+//    single source of truth for fund movements; wallet balances are a cached
+//    projection. This keeps the door open to swap the in-DB ledger for an
+//    on-chain ledger later (see packages/shared Ledger interface).
+//  - Locked assets (character sheets / LoRA / prompt packs) are referenced by
+//    storage key ONLY. They are served exclusively via signed, expiring URLs
+//    after a valid license — never inlined into API responses or the DOM.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────
+
+enum UserRole {
+  BUYER
+  CREATOR
+  FREELANCER
+  MODERATOR
+  ADMIN
+}
+
+enum KycTier {
+  NONE // email only
+  BASIC // verified email + phone
+  VERIFIED // ID verified
+  BUSINESS // org / KYB verified
+}
+
+enum CharacterStatus {
+  DRAFT
+  IN_REVIEW
+  CHANGES_REQUESTED
+  LIVE
+  SUSPENDED
+  DELISTED
+}
+
+enum OwnerType {
+  ORG // platform / studio listed (Phase 1)
+  CREATOR // community listed (Phase 2)
+}
+
+enum LicenseType {
+  ONE_TIME // $1 single-use
+  CAMPAIGN // variable, time/scope bound
+  FULL_RIGHTS // variable, exclusive transfer
+  COMMISSION // bespoke gig, priced per brief
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID // funds captured / in escrow
+  IN_ESCROW
+  RELEASED // funds released to seller
+  REFUNDED
+  PARTIALLY_REFUNDED
+  DISPUTED
+  CANCELLED
+  FAILED
+}
+
+enum EscrowStatus {
+  NONE
+  HELD // funds locked in escrow wallet
+  RELEASED // released to payee
+  REFUNDED // returned to payer
+  PARTIAL // partial release + partial refund
+  DISPUTED // under arbitration
+}
+
+enum PaymentProvider {
+  STRIPE
+  RAZORPAY
+  WALLET // internal wallet/credits balance
+}
+
+enum PaymentStatus {
+  CREATED
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+// Ledger uses double-entry semantics. Every LedgerEntry is a single leg;
+// legs are grouped by transactionId and must net to zero per currency.
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+}
+
+enum WalletType {
+  USER // a user's spendable balance
+  ESCROW // company-held escrow custody
+  PLATFORM_REVENUE // platform commission take
+  PAYOUT_PENDING // creator payout awaiting settlement
+  GATEWAY_CLEARING // external Stripe/Razorpay inflows
+}
+
+enum CommissionStatus {
+  OPEN // accepting bids
+  ASSIGNED // freelancer selected, funds locked
+  IN_PROGRESS
+  DELIVERED // awaiting buyer approval
+  APPROVED // buyer accepted -> release
+  REVISION_REQUESTED
+  DISPUTED
+  COMPLETED
+  CANCELLED
+}
+
+enum ListingStep {
+  IDENTITY_OWNERSHIP // step 1
+  ASSET_UPLOAD // step 2
+  SYNTHID_WATERMARK // step 3
+  RIGHTS_DECLARATION // step 4
+  MODERATION_REVIEW // step 5
+}
+
+enum AssetKind {
+  PREVIEW_IMAGE // watermarked + downsampled, public
+  GALLERY_IMAGE // watermarked, public
+  VIDEO // watermarked reel/preview
+  CHARACTER_SHEET // LOCKED: shot bible / prompt pack
+  LORA // LOCKED: model weights
+  PROMPT_PACK // LOCKED
+  SOURCE_ORIGINAL // LOCKED: ungated original
+}
+
+enum ModerationDecision {
+  PENDING
+  AUTO_APPROVED
+  APPROVED
+  REJECTED
+  ESCALATED
+}
+
+// ─────────────────────────────────────────────────────────────
+// Identity & access
+// ─────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String? // null when OAuth-only
+  displayName   String
+  avatarUrl     String?
+  role          UserRole  @default(BUYER)
+  kycTier       KycTier   @default(NONE)
+  isActive      Boolean   @default(true)
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  oauthAccounts      OAuthAccount[]
+  wallets            Wallet[]
+  charactersOwned    Character[]         @relation("CharacterCreator")
+  ordersAsBuyer      Order[]             @relation("OrderBuyer")
+  certificates       RightsCertificate[] @relation("CertBuyer")
+  commissionsCreated CommissionRequest[] @relation("CommissionBuyer")
+  bids               Bid[]
+  assignedGigs       CommissionRequest[] @relation("CommissionFreelancer")
+  reviewsAuthored    Review[]            @relation("ReviewAuthor")
+  feedPosts          FeedPost[]          @relation("PostAuthor")
+  comments           Comment[]
+  likes              Like[]
+  moderationActions  ModerationEvent[]   @relation("Moderator")
+  walletTopUps       WalletTopUp[]
+
+  @@index([role])
+}
+
+model OAuthAccount {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider       String // "google"
+  providerUserId String
+  createdAt      DateTime @default(now())
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Organizations (Phase 1 org-listed characters)
+// ─────────────────────────────────────────────────────────────
+
+model Organization {
+  id          String      @id @default(cuid())
+  name        String
+  slug        String      @unique
+  logoUrl     String?
+  verified    Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  characters  Character[]
+}
+
+// ─────────────────────────────────────────────────────────────
+// Characters & assets
+// ─────────────────────────────────────────────────────────────
+
+model Character {
+  id          String          @id @default(cuid())
+  slug        String          @unique
+  name        String
+  tagline     String?
+  description String?
+  category    String // e.g. "fashion", "gaming", "music"
+  niche       String?
+  style       String? // e.g. "photoreal", "anime", "3d"
+  gender      String?
+  ethnicity   String?
+  tags        String[]        @default([])
+  socials     Json? // { instagram, tiktok, youtube, x }
+  rating      Float           @default(0)
+  ratingCount Int             @default(0)
+  status      CharacterStatus @default(DRAFT)
+
+  ownerType String    @default("ORG") // OwnerType — org (Phase 1) or creator
+  orgId     String?
+  org       Organization? @relation(fields: [orgId], references: [id])
+  creatorId String?
+  creator   User?         @relation("CharacterCreator", fields: [creatorId], references: [id])
+
+  // Fingerprint / provenance (SynthID + invisible watermark).
+  synthId            String? @unique
+  watermarkFingerprint String?
+  provenanceHash     String? // hash anchored in ledger for verification
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  listedAt  DateTime?
+
+  assets       CharacterAsset[]
+  licenseTiers LicenseTier[]
+  orders       Order[]
+  certificates RightsCertificate[]
+  reviews      Review[]
+  feedPosts    FeedPost[]
+  listingChecklist ListingChecklist?
+  moderationEvents ModerationEvent[]
+
+  @@index([status])
+  @@index([category])
+  @@index([ownerType])
+}
+
+model CharacterAsset {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  kind        AssetKind
+  // Storage key only. Public assets may expose `publicUrl`; LOCKED kinds must
+  // resolve to signed expiring URLs at request time and NEVER expose storageKey
+  // or a permanent URL to unlicensed clients.
+  storageKey  String
+  publicUrl   String? // watermarked/downsampled derivatives only
+  mimeType    String?
+  width       Int?
+  height      Int?
+  bytes       Int?
+  blurDataUrl String? // tiny base64 for blur-up loading
+  isLocked    Boolean   @default(false)
+  position    Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  @@index([characterId, kind])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Licensing
+// ─────────────────────────────────────────────────────────────
+
+model LicenseTier {
+  id            String      @id @default(cuid())
+  characterId   String
+  character     Character   @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  type          LicenseType
+  name          String
+  description   String?
+  priceMinor    Int // integer minor units
+  currency      String      @default("USD")
+  scope         Json? // structured usage scope / rights
+  exclusive     Boolean     @default(false) // true for FULL_RIGHTS
+  isActive      Boolean     @default(true)
+  // Platform take-rate: flat 30% on every transaction (3000 bps).
+  takeRateBps   Int         @default(3000)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  orders Order[]
+
+  @@index([characterId, type])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Orders, escrow & certificates
+// ─────────────────────────────────────────────────────────────
+
+model Order {
+  id            String       @id @default(cuid())
+  buyerId       String
+  buyer         User         @relation("OrderBuyer", fields: [buyerId], references: [id])
+  characterId   String
+  character     Character    @relation(fields: [characterId], references: [id])
+  licenseTierId String
+  licenseTier   LicenseTier  @relation(fields: [licenseTierId], references: [id])
+
+  amountMinor      Int
+  currency         String       @default("USD")
+  commissionMinor  Int          @default(0) // platform cut at time of order
+  sellerNetMinor   Int          @default(0) // amount - commission
+  status           OrderStatus  @default(PENDING_PAYMENT)
+  escrowStatus     EscrowStatus @default(NONE)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  paidAt      DateTime?
+  releasedAt  DateTime?
+
+  payment     Payment?
+  certificate RightsCertificate?
+  ledgerTxnId String? // groups the ledger legs for this order
+
+  @@index([buyerId])
+  @@index([characterId])
+  @@index([status])
+}
+
+model RightsCertificate {
+  id            String      @id @default(cuid())
+  serial        String      @unique // human-verifiable serial
+  orderId       String      @unique
+  order         Order       @relation(fields: [orderId], references: [id])
+  buyerId       String
+  buyer         User        @relation("CertBuyer", fields: [buyerId], references: [id])
+  characterId   String
+  character     Character   @relation(fields: [characterId], references: [id])
+  licenseType   LicenseType
+  scope         Json?
+  issuedAt      DateTime    @default(now())
+  // Signature over the certificate payload. `ledgerHash` anchors it to the
+  // ledger for public verification via the /verify endpoint.
+  signature     String
+  ledgerHash    String?
+  revokedAt     DateTime?
+
+  @@index([buyerId])
+  @@index([characterId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Payments (dual gateway) & wallet/ledger
+// ─────────────────────────────────────────────────────────────
+
+model Payment {
+  id                String          @id @default(cuid())
+  orderId           String          @unique
+  order             Order           @relation(fields: [orderId], references: [id])
+  provider          PaymentProvider
+  providerRef       String? // gateway payment/charge id
+  amountMinor       Int
+  currency          String          @default("USD")
+  status            PaymentStatus   @default(CREATED)
+  rawWebhookPayload Json?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([provider, providerRef])
+}
+
+// Wallet top-ups: buyers fund their USER wallet via Stripe/Razorpay. Purchases
+// debit the wallet balance — no per-charge gateway calls for micro-transactions.
+model WalletTopUp {
+  id                String          @id @default(cuid())
+  userId            String
+  user              User            @relation(fields: [userId], references: [id])
+  provider          PaymentProvider
+  providerRef       String?
+  amountMinor       Int
+  currency          String          @default("USD")
+  status            PaymentStatus   @default(CREATED)
+  ledgerTxnId       String?
+  rawWebhookPayload Json?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([provider, providerRef])
+}
+
+model Wallet {
+  id           String       @id @default(cuid())
+  type         WalletType
+  ownerUserId  String? // null for platform-owned wallets (escrow/revenue)
+  owner        User?        @relation(fields: [ownerUserId], references: [id])
+  currency     String       @default("USD")
+  // Cached projection of the ledger. Balances MUST be reconcilable from
+  // LedgerEntry rows. Never mutate directly outside the ledger service.
+  balanceMinor Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  ledgerEntries LedgerEntry[]
+
+  @@unique([ownerUserId, type, currency])
+  @@index([type])
+}
+
+// Append-only double-entry ledger. Each row is one leg; legs sharing a
+// transactionId must sum to zero per currency. Abstracted behind the Ledger
+// interface in @acm/shared so an on-chain ledger can replace this later.
+model LedgerEntry {
+  id            String          @id @default(cuid())
+  transactionId String // groups legs of one atomic transaction
+  walletId      String
+  wallet        Wallet          @relation(fields: [walletId], references: [id])
+  direction     LedgerDirection
+  amountMinor   Int
+  currency      String          @default("USD")
+  reason        String // "order_capture", "escrow_hold", "release", "commission", "refund"
+  orderId       String?
+  metadata      Json?
+  createdAt     DateTime        @default(now())
+
+  @@index([transactionId])
+  @@index([walletId])
+  @@index([orderId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Commission engine (Phase 3 scaffolding)
+// ─────────────────────────────────────────────────────────────
+
+model CommissionRequest {
+  id                  String           @id @default(cuid())
+  buyerId             String
+  buyer               User             @relation("CommissionBuyer", fields: [buyerId], references: [id])
+  title               String
+  brief               String
+  budgetMinor         Int
+  currency            String           @default("USD")
+  deadline            DateTime?
+  status              CommissionStatus @default(OPEN)
+  assignedFreelancerId String?
+  assignedFreelancer  User?            @relation("CommissionFreelancer", fields: [assignedFreelancerId], references: [id])
+  escrowStatus        EscrowStatus     @default(NONE)
+  deliverableAssetKey String? // LOCKED storage key of final deliverable
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  bids Bid[]
+
+  @@index([status])
+  @@index([buyerId])
+}
+
+model Bid {
+  id           String            @id @default(cuid())
+  commissionId String
+  commission   CommissionRequest @relation(fields: [commissionId], references: [id], onDelete: Cascade)
+  freelancerId String
+  freelancer   User              @relation(fields: [freelancerId], references: [id])
+  amountMinor  Int
+  currency     String            @default("USD")
+  message      String?
+  etaDays      Int?
+  createdAt    DateTime          @default(now())
+
+  @@unique([commissionId, freelancerId])
+  @@index([commissionId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Reviews
+// ─────────────────────────────────────────────────────────────
+
+model Review {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User      @relation("ReviewAuthor", fields: [authorId], references: [id])
+  rating      Int // 1..5
+  body        String?
+  createdAt   DateTime  @default(now())
+
+  @@unique([characterId, authorId])
+  @@index([characterId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Listing checklist & moderation (Phase 2 scaffolding)
+// ─────────────────────────────────────────────────────────────
+
+model ListingChecklist {
+  id          String    @id @default(cuid())
+  characterId String    @unique
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  // Step completion flags for the 5-step wizard.
+  identityConfirmed   Boolean @default(false) // step 1: fully synthetic + self-owned
+  assetsUploaded      Boolean @default(false) // step 2
+  synthIdStamped      Boolean @default(false) // step 3
+  rightsDeclared      Boolean @default(false) // step 4
+  moderationPassed    Boolean @default(false) // step 5
+  currentStep         ListingStep @default(IDENTITY_OWNERSHIP)
+
+  // Signed IP / rights declaration (fully synthetic, no real-person likeness).
+  ipDeclarationSigned Boolean   @default(false)
+  ipDeclarationHash   String?
+  signedAt            DateTime?
+
+  updatedAt DateTime @updatedAt
+}
+
+model ModerationEvent {
+  id          String             @id @default(cuid())
+  characterId String
+  character   Character          @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  moderatorId String?
+  moderator   User?              @relation("Moderator", fields: [moderatorId], references: [id])
+  decision    ModerationDecision @default(PENDING)
+  notes       String?
+  createdAt   DateTime           @default(now())
+
+  @@index([characterId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// AI influencer social layer (Phase 4 scaffolding)
+// ─────────────────────────────────────────────────────────────
+
+model FeedPost {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  authorId    String? // system/creator that published on behalf of the AI persona
+  author      User?     @relation("PostAuthor", fields: [authorId], references: [id])
+  mediaUrl    String
+  blurDataUrl String?
+  isReel      Boolean   @default(false)
+  caption     String?
+  likeCount   Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  comments Comment[]
+  likes    Like[]
+
+  @@index([characterId])
+  @@index([createdAt])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  post      FeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  postId    String
+  post      FeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+}
