@@ -93,6 +93,33 @@ const ASPECTS: Array<[number, number]> = [
   [800, 900],
 ];
 
+// Royalty-free loop clips for desktop hover previews (Mixkit CDN).
+const PREVIEW_VIDEO_URLS = [
+  'https://assets.mixkit.co/videos/preview/mixkit-young-woman-in-neon-light-398-large.mp4',
+  'https://assets.mixkit.co/videos/preview/mixkit-woman-walking-on-the-street-at-night-39848-large.mp4',
+  'https://assets.mixkit.co/videos/preview/mixkit-girl-in-neon-sign-1232-large.mp4',
+  'https://assets.mixkit.co/videos/preview/mixkit-portrait-of-a-woman-in-a-pool-1250-large.mp4',
+  'https://assets.mixkit.co/videos/preview/mixkit-woman-standing-in-front-of-a-neon-light-39847-large.mp4',
+  'https://assets.mixkit.co/videos/preview/mixkit-woman-posing-for-camera-39849-large.mp4',
+  'https://assets.mixkit.co/videos/preview/mixkit-fashion-model-posing-in-neon-light-39850-large.mp4',
+  'https://assets.mixkit.co/videos/preview/mixkit-close-up-of-a-woman-with-neon-makeup-39851-large.mp4',
+  'https://assets.mixkit.co/videos/preview/mixkit-woman-with-neon-face-paint-39852-large.mp4',
+  'https://assets.mixkit.co/videos/preview/mixkit-woman-in-a-neon-lit-environment-39853-large.mp4',
+  'https://assets.mixkit.co/videos/preview/mixkit-young-woman-with-neon-lights-39854-large.mp4',
+  'https://assets.mixkit.co/videos/preview/mixkit-woman-with-colored-neon-lights-39855-large.mp4',
+] as const;
+
+function previewVideo(seed: string, index: number): MediaAssetDTO {
+  const url = PREVIEW_VIDEO_URLS[index % PREVIEW_VIDEO_URLS.length]!;
+  return {
+    id: `${seed}-preview-video`,
+    kind: AssetKind.VIDEO,
+    url,
+    width: 1920,
+    height: 1080,
+  };
+}
+
 export function generateMockCharacters(count = 120): CharacterCardDTO[] {
   const list: CharacterCardDTO[] = [];
   for (let i = 0; i < count; i++) {
@@ -138,6 +165,7 @@ export function generateMockCharacters(count = 120): CharacterCardDTO[] {
       ownerName: org.name,
       verified: org.verified,
       cover: media(slug, AssetKind.PREVIEW_IMAGE, w, h, hue),
+      previewVideo: previewVideo(slug, i),
       fromPriceMinor: 100, // $1 one-time
       currency: 'USD',
       licenseTypes,

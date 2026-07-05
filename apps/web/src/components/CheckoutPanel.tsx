@@ -106,9 +106,9 @@ export function CheckoutPanel({
         {character.licenseTiers.map((t) => (
           <div
             key={t.id}
-            className="card-surface flex items-center justify-between p-4"
+            className="card-surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
           >
-            <div>
+            <div className="min-w-0">
               <p className="font-display text-sm font-bold uppercase tracking-wide text-ink">
                 {t.name}
                 {t.exclusive && (
@@ -119,7 +119,7 @@ export function CheckoutPanel({
               </p>
               <p className="mt-0.5 text-xs text-ink-secondary">{t.description}</p>
             </div>
-            <div className="text-right">
+            <div className="flex items-center justify-between gap-3 sm:block sm:text-right">
               <p className="font-display text-xl font-bold text-lime">
                 {formatMoney(t.priceMinor, t.currency)}
               </p>

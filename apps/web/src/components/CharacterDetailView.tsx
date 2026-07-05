@@ -32,7 +32,7 @@ export function CharacterDetailView({ character }: { character: CharacterDetailD
             Watermarked
           </span>
         </div>
-        <div className="mt-3 grid grid-cols-4 gap-2">
+        <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-4 sm:gap-2">
           {c.gallery.slice(1, 5).map((g, i) => (
             <motion.div
               key={g.id}
@@ -68,7 +68,7 @@ export function CharacterDetailView({ character }: { character: CharacterDetailD
           {c.synthIdVerified && <span className="ml-auto badge-lime">SynthID ✓</span>}
         </div>
 
-        <h1 className="heading-display mt-3 text-4xl font-bold sm:text-5xl">{c.name}</h1>
+        <h1 className="heading-display mt-3 text-3xl font-bold sm:text-4xl lg:text-5xl">{c.name}</h1>
         <p className="mt-2 text-lg text-ink-secondary">{c.tagline}</p>
 
         <div className="mt-4 flex flex-wrap items-center gap-4">
