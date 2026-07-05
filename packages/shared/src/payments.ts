@@ -4,33 +4,34 @@ import type { Money } from './money.js';
 // ============================================================================
 // Payment gateway abstraction (dual gateway: Stripe + Razorpay)
 // ============================================================================
-// Both providers implement this interface so checkout code is provider-neutral.
-// Selection can be driven by buyer geography / currency at runtime.
-// Phase 1 ships stub implementations; live keys wire in real gateways later.
+// Confirmed policy: **wallet top-up based**. Buyers fund their USER wallet via
+// Stripe or Razorpay, then spend wallet balance on purchases. Micro-transactions
+// ($1 one-time licenses) debit the wallet instead of hitting the gateway per
+// charge.
 // ============================================================================
 
-export interface CreatePaymentIntentInput {
-  orderId: string;
+/** Gateway intent for crediting a buyer's wallet (not tied to an order). */
+export interface CreateTopUpIntentInput {
+  topUpId: string;
+  userId: string;
   amount: Money;
-  buyerUserId: string;
   metadata?: Record<string, string>;
 }
 
 export interface PaymentIntentResult {
   provider: PaymentProvider;
   providerRef: string;
-  clientSecret?: string; // Stripe
-  checkoutOrderId?: string; // Razorpay
+  clientSecret?: string;
+  checkoutOrderId?: string;
   status: 'CREATED' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED';
 }
 
 export interface PaymentGateway {
   readonly provider: PaymentProvider;
-  createIntent(input: CreatePaymentIntentInput): Promise<PaymentIntentResult>;
-  /** Verify + parse a provider webhook into a normalized status update. */
+  createTopUpIntent(input: CreateTopUpIntentInput): Promise<PaymentIntentResult>;
   verifyWebhook(
     rawBody: string | Buffer,
     signature: string,
-  ): Promise<{ providerRef: string; status: PaymentIntentResult['status'] }>;
+  ): Promise<{ providerRef: string; status: PaymentIntentResult['status']; topUpId?: string }>;
   refund(providerRef: string, amount?: Money): Promise<{ ok: boolean }>;
 }

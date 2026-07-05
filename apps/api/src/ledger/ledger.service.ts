@@ -25,6 +25,8 @@ function walletKey(w: WalletRef): string {
       return 'platform:escrow';
     case 'platform_revenue':
       return 'platform:revenue';
+    case 'gateway_clearing':
+      return 'platform:gateway_clearing';
   }
 }
 

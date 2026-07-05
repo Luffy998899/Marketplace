@@ -98,7 +98,7 @@ async function main() {
             priceMinor: t.priceMinor,
             currency: t.currency,
             exclusive: t.exclusive,
-            takeRateBps: t.type === 'FULL_RIGHTS' ? 2500 : t.type === 'CAMPAIGN' ? 1500 : 1000,
+            takeRateBps: 3000,
           })),
         },
       },

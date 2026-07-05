@@ -1,20 +1,16 @@
 import type { Money } from './money.js';
 
 // ============================================================================
-// Escrow abstraction
+// Escrow
 // ============================================================================
-// Buyer funds are LOCKED in the company/escrow wallet and released to the
-// payee (creator/freelancer) ONLY on approved delivery. Platform commission is
-// auto-deducted at release.
-//
-// ⚠️ OPEN PRODUCT DECISIONS (flagged for confirmation before we hardcode them):
-//   - Exact release trigger for one-time / full-rights orders: instant on
-//     capture, or held until buyer "accepts"? (Digital goods are typically
-//     delivered instantly.)
-//   - Dispute resolution split rules (partial refund %, arbitration authority).
-//   - Take-rate schedule per tier (basis points).
-// This interface is intentionally decision-agnostic; concrete policy lives in
-// the escrow service implementation once the above are confirmed.
+// Confirmed policy:
+//   • Buyer funds are LOCKED in the company escrow wallet on purchase.
+//   • Platform takes a flat 30% commission at release (PLATFORM_TAKE_RATE_BPS).
+//   • Digital goods (ONE_TIME / FULL_RIGHTS): auto-release immediately after hold
+//     because the deliverable (signed asset URL) is available instantly.
+//   • Commissions (Phase 3): release only on buyer-approved delivery.
+//   • Disputes: moderator splits held funds per refundToBuyerBps; commission is
+//     deducted from the seller's released portion only.
 // ============================================================================
 
 export interface EscrowHoldResult {
@@ -24,31 +20,45 @@ export interface EscrowHoldResult {
 
 export interface EscrowReleaseInput {
   orderId: string;
-  /** Basis points taken by the platform at release (1% = 100 bps). */
-  takeRateBps: number;
+  /** Seller / creator user id receiving the net payout. */
+  payeeUserId: string;
+  /** Defaults to PLATFORM_TAKE_RATE_BPS (30%) when omitted. */
+  takeRateBps?: number;
 }
 
 export interface EscrowReleaseResult {
   escrowTxnId: string;
   releasedToPayee: Money;
   platformCommission: Money;
+  ledgerHash: string;
+}
+
+export interface EscrowRefundInput {
+  orderId: string;
+}
+
+export interface EscrowRefundResult {
+  escrowTxnId: string;
+  refunded: Money;
+  ledgerHash: string;
 }
 
 export interface DisputeResolution {
   orderId: string;
-  /** Portion (bps of held amount) refunded to buyer; remainder released. */
+  /** Portion (bps of held amount) refunded to buyer; remainder released to payee. */
   refundToBuyerBps: number;
-  resolvedBy: string; // moderator/arbiter user id
+  payeeUserId: string;
+  resolvedBy: string;
   notes?: string;
 }
 
 export interface EscrowService {
-  /** Move captured funds from buyer wallet into escrow custody. */
+  /** Debit buyer wallet → credit escrow custody. */
   hold(orderId: string, amount: Money, payerUserId: string): Promise<EscrowHoldResult>;
-  /** Release escrowed funds to the payee, deducting platform commission. */
+  /** Release escrow → platform revenue (30%) + seller payout_pending (70%). */
   release(input: EscrowReleaseInput): Promise<EscrowReleaseResult>;
-  /** Full refund of escrowed funds back to the buyer. */
-  refund(orderId: string): Promise<EscrowHoldResult>;
-  /** Split escrow per an arbitration decision. */
+  /** Full refund: escrow → buyer wallet. */
+  refund(input: EscrowRefundInput): Promise<EscrowRefundResult>;
+  /** Split escrow per moderator arbitration. */
   resolveDispute(resolution: DisputeResolution): Promise<EscrowReleaseResult>;
 }

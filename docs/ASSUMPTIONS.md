@@ -1,89 +1,87 @@
-# Open decisions & provisional assumptions
+# Confirmed product decisions
 
-The build prompt says: **"Ask me before making any assumption about payment
-flow, escrow release logic, or the ledger interface."** As an autonomous agent I
-can't block on a reply, so I have **not hardcoded** these business rules.
-Instead I built decision-agnostic interfaces and flagged every open question
-here. The guarded stubs throw `NotImplementedException` rather than guess.
-
-Please confirm / correct the items below and I'll wire in the concrete logic.
+These were confirmed by the product owner on 2026-07-05. The codebase now
+implements them; remaining open items are noted at the bottom.
 
 ---
 
-## 1. Payment flow
+## 1. Payment flow — **wallet top-up based** ✅
 
-**Interface:** `PaymentGateway` in `packages/shared/src/payments.ts` (Stripe +
-Razorpay both implement it; selection can be driven by buyer currency/geo).
+Buyers **top up a prepaid wallet** via Stripe or Razorpay, then spend wallet
+balance on purchases. Micro-transactions ($1 one-time licenses) debit the wallet
+instead of hitting the gateway per charge.
 
-Open questions:
+**Implementation:**
+- `WalletTopUp` Prisma model + `POST /api/wallet/:userId/topup`
+- `WalletService.topUp()` → gateway intent (stub auto-succeeds in dev) → ledger
+  credit to `USER` wallet, balanced against `GATEWAY_CLEARING`
+- `GET /api/wallet/:userId/balance` returns spendable + `PAYOUT_PENDING` balances
+- Checkout (`OrdersService.purchase`) debits wallet via escrow hold — never the
+  gateway directly
 
-- **Wallet vs. direct charge:** the prompt describes a "wallet/credits model for
-  micro-transactions." For the $1 one-time tier, do buyers **top up a wallet**
-  and spend credits, or is every purchase a **direct gateway charge**? (Direct
-  charges on $1 are fee-inefficient; a prepaid wallet is the usual pattern.)
-  → *Provisional assumption baked into the model, not logic:* wallet-first, with
-  `WalletType.USER` balances and `Payment` rows for top-ups.
-- **Currency support:** USD-only for MVP, or multi-currency at launch? (Model
-  already stores `currency` per amount.)
-- **Gateway routing rule:** Razorpay for INR / India, Stripe otherwise?
-
-## 2. Escrow release logic
-
-**Interface:** `EscrowService` in `packages/shared/src/escrow.ts`. `hold` is
-implemented; `release` / `resolveDispute` are guarded stubs.
-
-Open questions:
-
-- **Release trigger for instant digital goods (ONE_TIME / FULL_RIGHTS):** since
-  the deliverable (signed asset URL) is available immediately, do we
-  **auto-release** to the seller on capture, or hold until the buyer clicks
-  "accept" / after an inspection window? Commissions clearly release on
-  **approved delivery** — but one-time/full-rights are ambiguous.
-- **Dispute splits:** what are the allowed outcomes and who arbitrates? The
-  model supports `hold / partial refund / arbitration`
-  (`EscrowStatus.PARTIAL`, `DisputeResolution.refundToBuyerBps`), but the
-  concrete percentages / authority are unspecified.
-- **Refund window & chargeback handling.**
-
-## 3. Take-rate (platform commission) schedule
-
-The prompt says "higher tiers = higher take-rate" but gives no numbers. I stored
-`takeRateBps` on `LicenseTier` and used these **placeholders in the seed only**
-(not in any release logic):
-
-| Tier         | Placeholder take-rate |
-|--------------|-----------------------|
-| ONE_TIME     | 10% (1000 bps)        |
-| CAMPAIGN     | 15% (1500 bps)        |
-| FULL_RIGHTS  | 25% (2500 bps)        |
-| COMMISSION   | TBD                   |
-
-→ **Please confirm the real schedule.** `splitByTakeRate()` in
-`packages/shared/src/money.ts` already does the (rounding-safe) math.
-
-## 4. Ledger interface
-
-**Interface:** `Ledger` in `packages/shared/src/ledger.ts`.
-
-Assumptions I made (please confirm):
-
-- **Append-only, double-entry** in Postgres for MVP (`LedgerEntry` model): every
-  transaction's legs net to zero per currency; wallet balances are a
-  **projection** of the ledger, never mutated directly.
-- **On-chain later:** the interface is the seam. A `PolygonLedger` / `BaseLedger`
-  can implement the same `post` / `getBalance` / `getTransaction` contract with
-  no caller changes. Rights certificates anchor a `ledgerHash` for public
-  verification.
-- Open: which fund movements must be individually on-chain vs. batched/anchored?
+**Still open (low priority):**
+- Currency support at launch (USD-only assumed for MVP)
+- Gateway routing rule (Razorpay for INR, Stripe otherwise)
 
 ---
 
-## Other provisional choices (low-risk, easy to change)
+## 2. Escrow — **confirmed** ✅
 
-- **Package manager:** pnpm workspaces (pnpm was available in the environment).
-- **Mock imagery:** seeded `picsum.photos` placeholders — clearly synthetic
-  stand-ins, replaced by the watermarked CDN in production.
-- **Grid layout:** responsive virtualised grid via `VirtuosoGrid` (bento feel,
-  fixed 3:4 cards) for guaranteed smoothness at 1000+ items. True variable-height
-  masonry can be layered in if desired.
-- **Money representation:** integer **minor units** (cents) everywhere.
+Buyer funds are **locked in escrow custody** on purchase. Platform commission is
+auto-deducted at release.
+
+**Release policy (implemented):**
+| License type | Release trigger |
+|---|---|
+| ONE_TIME | Auto-release immediately (instant digital delivery) |
+| FULL_RIGHTS | Auto-release immediately |
+| CAMPAIGN | Auto-release immediately (Phase 1; can add inspection window later) |
+| COMMISSION (Phase 3) | Release on buyer-approved delivery only |
+
+**Escrow operations (`EscrowServiceImpl`):**
+- `hold` — debit buyer `USER` wallet → credit platform `ESCROW`
+- `release` — debit `ESCROW` → credit `PLATFORM_REVENUE` (30%) + seller `PAYOUT_PENDING` (70%)
+- `refund` — debit `ESCROW` → credit buyer `USER` wallet (full refund)
+- `resolveDispute` — moderator splits per `refundToBuyerBps`; commission deducted from seller portion only
+
+**Still open:**
+- Refund window & chargeback handling with Stripe/Razorpay
+- Inspection window for CAMPAIGN tier (if desired)
+
+---
+
+## 3. Take-rate — **flat 30%** ✅
+
+`PLATFORM_TAKE_RATE_BPS = 3000` (30%) on **every** transaction type. Applied via
+`splitByTakeRate()` at escrow release. Stored on `LicenseTier.takeRateBps` with
+default `3000`.
+
+---
+
+## 4. Ledger — **append-only double-entry in Postgres** ✅
+
+Confirmed model:
+- `LedgerEntry` rows are append-only; legs per `transactionId` net to zero per currency
+- `Wallet.balanceMinor` is a cached projection, reconcilable from entries
+- `Ledger` interface in `@acm/shared` is the seam for on-chain (Polygon/Base) later
+- `InMemoryLedgerService` — default for zero-infra dev
+- `PrismaLedgerService` — Postgres-backed implementation (set `LEDGER_DRIVER=prisma` when DB is up)
+- Rights certificates anchor `ledgerHash` for public verification (`GET /api/certificates/verify/:serial`)
+
+**Still open:**
+- Which movements are individually on-chain vs. batched/anchored (future)
+
+---
+
+## Checkout flow (end-to-end)
+
+```
+1. POST /wallet/:userId/topup        → gateway capture → credit USER wallet
+2. POST /orders/purchase             → escrow.hold (debit USER → credit ESCROW)
+3. escrow.release (auto)             → 30% PLATFORM_REVENUE + 70% seller PAYOUT_PENDING
+4. Rights certificate issued         → serial + signature + ledgerHash
+5. GET /certificates/verify/:serial  → public verification
+```
+
+Locked character sheets are still served only via signed expiring URLs after a
+valid license — not part of this flow yet (Phase 1.x asset delivery endpoint).

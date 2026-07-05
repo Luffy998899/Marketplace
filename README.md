@@ -112,8 +112,14 @@ Delivered:
 - ✅ Ledger + escrow + payment **interfaces** with an in-memory double-entry
   ledger reference implementation.
 
-Deferred pending confirmation (see `docs/ASSUMPTIONS.md`): live payment capture,
-escrow **release trigger**, dispute split rules, and the take-rate schedule.
+Deferred pending confirmation (see `docs/ASSUMPTIONS.md`): ~~live payment capture,
+escrow **release trigger**, dispute split rules, and the take-rate schedule.~~
+
+**Confirmed & wired (2026-07-05):**
+- Wallet top-up payment flow (Stripe/Razorpay → USER wallet)
+- Escrow hold → auto-release for digital goods
+- Flat **30%** platform take-rate
+- Append-only double-entry ledger (`InMemoryLedgerService` + `PrismaLedgerService`)
 
 ### Key rules honoured in the model/UI
 

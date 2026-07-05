@@ -109,6 +109,7 @@ enum WalletType {
   ESCROW // company-held escrow custody
   PLATFORM_REVENUE // platform commission take
   PAYOUT_PENDING // creator payout awaiting settlement
+  GATEWAY_CLEARING // external Stripe/Razorpay inflows
 }
 
 enum CommissionStatus {
@@ -179,6 +180,7 @@ model User {
   comments           Comment[]
   likes              Like[]
   moderationActions  ModerationEvent[]   @relation("Moderator")
+  walletTopUps       WalletTopUp[]
 
   @@index([role])
 }
@@ -297,9 +299,8 @@ model LicenseTier {
   scope         Json? // structured usage scope / rights
   exclusive     Boolean     @default(false) // true for FULL_RIGHTS
   isActive      Boolean     @default(true)
-  // Platform take-rate in basis points (e.g. 1000 = 10%). Higher tiers = higher
-  // take-rate. Concrete defaults are pending product confirmation — see docs.
-  takeRateBps   Int         @default(1000)
+  // Platform take-rate: flat 30% on every transaction (3000 bps).
+  takeRateBps   Int         @default(3000)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -381,6 +382,26 @@ model Payment {
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
+  @@index([provider, providerRef])
+}
+
+// Wallet top-ups: buyers fund their USER wallet via Stripe/Razorpay. Purchases
+// debit the wallet balance — no per-charge gateway calls for micro-transactions.
+model WalletTopUp {
+  id                String          @id @default(cuid())
+  userId            String
+  user              User            @relation(fields: [userId], references: [id])
+  provider          PaymentProvider
+  providerRef       String?
+  amountMinor       Int
+  currency          String          @default("USD")
+  status            PaymentStatus   @default(CREATED)
+  ledgerTxnId       String?
+  rawWebhookPayload Json?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([userId])
   @@index([provider, providerRef])
 }
 

@@ -16,7 +16,8 @@ import type { Money } from './money.js';
 export type WalletRef =
   | { kind: 'user'; userId: string; walletType?: 'USER' | 'PAYOUT_PENDING' }
   | { kind: 'escrow' }
-  | { kind: 'platform_revenue' };
+  | { kind: 'platform_revenue' }
+  | { kind: 'gateway_clearing' }; // external payment gateway inflows (Stripe/Razorpay)
 
 export interface LedgerLeg {
   wallet: WalletRef;
