@@ -11,6 +11,7 @@ import {
 import { createHash, randomUUID } from 'node:crypto';
 import { EscrowServiceImpl } from '../ledger/escrow.service';
 import { InMemoryLedgerService } from '../ledger/ledger.service';
+import { StudioService } from '../studio/studio.service';
 
 export interface PurchaseInput {
   buyerId: string;
@@ -28,10 +29,11 @@ export class OrdersService {
   constructor(
     private readonly escrow: EscrowServiceImpl,
     private readonly ledger: InMemoryLedgerService,
+    private readonly studio: StudioService,
   ) {}
 
   async purchase(input: PurchaseInput): Promise<PurchaseResult> {
-    const character = getMockCharacterBySlug(input.characterSlug);
+    const character = this.resolveCharacter(input.characterSlug);
     if (!character) throw new NotFoundException('Character not found');
 
     const tier = character.licenseTiers.find((t) => t.id === input.licenseTierId);
@@ -106,26 +108,41 @@ export class OrdersService {
 
   verifyCertificate(serial: string): {
     valid: boolean;
+    serial?: string;
     orderId?: string;
     ledgerHash?: string;
     buyerId?: string;
     characterSlug?: string;
+    characterName?: string;
+    licenseType?: string;
+    purchasedAt?: string;
+    message?: string;
   } {
     for (const order of this.orders.values()) {
       if (order.certificate.serial === serial) {
         return {
           valid: true,
+          serial: order.certificate.serial,
           orderId: order.orderId,
           ledgerHash: order.certificate.ledgerHash,
           buyerId: order.buyerId,
           characterSlug: order.characterSlug,
+          characterName: order.characterName,
+          licenseType: order.licenseType,
+          purchasedAt: order.purchasedAt,
         };
       }
     }
-    return { valid: false };
+    return { valid: false, serial, message: 'Certificate not found or invalid' };
+  }
+
+  private resolveCharacter(slug: string): CharacterDetailDTO | null {
+    return this.studio.getDetailBySlug(slug) ?? getMockCharacterBySlug(slug);
   }
 
   private resolvePayeeId(character: CharacterDetailDTO): string {
+    const creatorId = this.studio.getCreatorIdForSlug(character.slug);
+    if (creatorId) return creatorId;
     return `org_payee_${character.ownerName.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;
   }
 

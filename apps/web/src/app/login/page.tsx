@@ -36,7 +36,13 @@ export default function LoginPage() {
         <span className="badge-lime mb-4 w-fit">Buyer access</span>
         <h1 className="heading-display text-3xl font-bold">Sign in</h1>
         <p className="mt-2 text-sm text-ink-secondary">
-          Demo: buyer@synthetica.dev / demo1234
+          Demo buyer: buyer@synthetica.dev / demo1234
+          <br />
+          Demo creator: creator@synthetica.dev / demo1234
+          <br />
+          Demo admin: admin@synthetica.dev / demo1234
+          <br />
+          Demo freelancer: freelancer@synthetica.dev / demo1234
         </p>
 
         <form onSubmit={onSubmit} className="card-surface mt-8 space-y-4 p-6">

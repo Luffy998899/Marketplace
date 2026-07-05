@@ -17,11 +17,33 @@ export function SiteHeader() {
             Synthetica
           </span>
         </Link>
+
+        <nav className="hidden items-center gap-1 sm:flex">
+          <Link href="/feed" className="btn-ghost !px-3 !py-1.5 !text-[10px] sm:!text-xs">
+            Feed
+          </Link>
+          <Link href="/gigs" className="btn-ghost !px-3 !py-1.5 !text-[10px] sm:!text-xs">
+            Gigs
+          </Link>
+        </nav>
+
         {!loading &&
           (user ? (
-            <Link href="/dashboard" className="btn-lime !px-4 !py-2 !text-xs">
-              Dashboard
-            </Link>
+            <div className="flex items-center gap-2">
+              {(user.role === 'ADMIN' || user.role === 'MODERATOR') && (
+                <Link href="/admin/moderation" className="btn-ghost !px-3 !py-1.5 !text-[10px] sm:!text-xs">
+                  Moderation
+                </Link>
+              )}
+              {(user.role === 'CREATOR' || user.role === 'ADMIN') && (
+                <Link href="/studio" className="btn-ghost !px-3 !py-1.5 !text-[10px] sm:!text-xs">
+                  Studio
+                </Link>
+              )}
+              <Link href="/dashboard" className="btn-lime !px-4 !py-2 !text-xs">
+                Dashboard
+              </Link>
+            </div>
           ) : (
             <Link href="/login" className="btn-ghost !px-4 !py-2 !text-xs">
               Sign in

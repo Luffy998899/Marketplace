@@ -1,116 +1,106 @@
 # Synthetica — AI Character Marketplace
 
-The world's first **AI Character Marketplace**: a platform where fully synthetic
-AI avatars / virtual influencers are discovered, licensed, and traded. Humans
-only **list** and **buy** — the platform automates discovery, licensing, payment
-custody (escrow), and delivery.
+The world's first **AI Character Marketplace**: discover, license, and trade fully synthetic
+AI avatars / virtual influencers.
 
-> **Status: Phase 1 MVP complete.** Discovery grid, auth, wallet checkout, escrow,
-> rights certificates, buyer dashboard, and signed asset delivery are implemented.
-> Production hardening (real Stripe/Razorpay, Postgres persistence, S3/R2) is
-> Phase 1.x polish — see [`docs/ASSUMPTIONS.md`](docs/ASSUMPTIONS.md).
+> **Status: All phases complete.** Marketplace, Creator Studio, commission gigs, social feed,
+> licensed-buyer reviews, moderation, certificate verification, and production-ready infra hooks
+> (Prisma, MinIO/S3, Stripe, Meilisearch) — ready to run locally. See
+> [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for the full stack guide.
 
 ---
 
-## Monorepo structure
-
-```
-.
-├── apps/
-│   ├── web/                 # Next.js 14 (App Router) + Tailwind + Framer Motion
-│   │   └── src/
-│   │       ├── app/         # routes: / (grid), /character/[slug] (detail)
-│   │       ├── components/  # CharacterGrid (virtualised), CharacterCard, FilterRail, …
-│   │       ├── lib/data.ts  # data source abstraction (mock ⇄ live API)
-│   │       └── store/       # Zustand filter state
-│   └── api/                 # NestJS (REST). characters + ledger/escrow modules
-│       └── src/
-│           ├── characters/  # list + detail (mock-backed, DTO-identical to web)
-│           └── ledger/      # in-memory double-entry ledger + escrow scaffold
-├── packages/
-│   ├── shared/              # framework-agnostic types, enums, DTOs, money helpers,
-│   │   └── src/             # and the Ledger / Escrow / PaymentGateway interfaces
-│   └── db/                  # Prisma schema (source of truth) + client + seed
-│       └── prisma/schema.prisma
-├── docker-compose.yml       # postgres + redis + meilisearch + minio (S3/R2 stand-in)
-├── docs/ASSUMPTIONS.md      # open product decisions flagged for confirmation
-├── pnpm-workspace.yaml
-└── .env.example
-```
-
-### Package graph
-
-- `@acm/shared` — zero-dependency (except zod) domain layer. Both the web app and
-  the API import DTOs, enums, money math, and the ledger/escrow/payment
-  **interfaces** from here so contracts never drift.
-- `@acm/db` — Prisma schema + generated client + seed. The single source of truth
-  for the data model.
-- `@acm/web` / `@acm/api` — apps.
-
----
-
-## Tech stack
-
-| Concern      | Choice |
-|--------------|--------|
-| Frontend     | Next.js 14 (App Router), React 18, TypeScript, Tailwind, Framer Motion |
-| Grid/Media   | `react-virtuoso` (`VirtuosoGrid`, window-scroll) + `next/image` blur-up |
-| State/Data   | React Query (server state) + Zustand (filter state) |
-| Backend      | NestJS (REST; WebSocket + Socket.io planned for realtime) |
-| DB / Cache   | PostgreSQL (Prisma) + Redis |
-| Search       | Meilisearch |
-| Storage      | S3 / Cloudflare R2 with **signed, expiring URLs** for gated assets |
-| Payments     | Stripe + Razorpay (dual gateway) behind a `PaymentGateway` interface |
-| Ledger       | In-DB double-entry for MVP, abstracted behind a `Ledger` interface |
-| Auth         | JWT + Google OAuth + RBAC (register/login + guards) |
-
----
-
-## Getting started
+## Run locally (full stack)
 
 ```bash
-# 1. install
-pnpm install
+pnpm install && pnpm build:shared
 
-# 2. build the shared domain package (web/api consume its compiled output)
-pnpm build:shared
+pnpm dev:api    # http://localhost:4000/api
+pnpm dev:web    # http://localhost:3000
+```
 
-# 3a. run the web app with the local mock dataset (no backend/DB needed)
-pnpm dev:web            # http://localhost:3000
+Copy `apps/web/.env.local.example` → `apps/web/.env.local` and set
+`NEXT_PUBLIC_USE_MOCK_DATA=false` so creator listings, purchases, gigs, and feed use the live API.
 
-# 3b. (optional) run the API too — identical DTO contract
-pnpm dev:api            # http://localhost:4000/api
+### Demo accounts
 
-# 4. (optional) real infra + seeded DB of 120 live characters
-pnpm infra:up           # postgres, redis, meilisearch, minio
+| Role | Email | Password |
+|------|-------|----------|
+| Buyer | buyer@synthetica.dev | demo1234 |
+| Creator | creator@synthetica.dev | demo1234 |
+| Admin | admin@synthetica.dev | demo1234 |
+| Freelancer | freelancer@synthetica.dev | demo1234 |
+
+---
+
+## Phases (all implemented)
+
+### Phase 1 — Marketplace (buyers)
+- Cinematic homepage bento grid with filters, video hover previews, infinite scroll
+- Character detail + wallet checkout (top-up → escrow → auto-release, 30% platform take)
+- Buyer dashboard — licenses, signed locked-asset downloads, certificate links
+- Public certificate verification at `/verify/[serial]`
+- Licensed-buyer reviews on character detail pages
+
+### Phase 2 — Creator Studio (sellers)
+- `/studio` — dashboard, earnings, listing management
+- 5-step listing wizard: Identity → Assets → SynthID → Rights → Moderation
+- File upload to API (local `uploads/` or MinIO/S3 when `S3_ENDPOINT` is set)
+- Live listings merged into marketplace catalog
+- Moderation queue at `/admin/moderation` (toggle via `MODERATION_AUTO_APPROVE`)
+
+### Phase 3 — Commission gigs
+- `/gigs` — open brief board, post briefs, bid, assign freelancer
+- Escrow-protected delivery flow: assign → deliver → approve / revision
+- Freelancer onboarding at `/gigs/become-freelancer`
+- Demo freelancer account for end-to-end testing
+
+### Phase 4 — Social feed
+- `/feed` — synthetic influencer reels and image posts
+- Like posts (authenticated), paginated infinite scroll
+- Posts seeded from marketplace characters
+
+### Platform & infrastructure
+- JWT auth + RBAC (buyer, creator, freelancer, admin)
+- Double-entry ledger + escrow (in-memory by default; Prisma-ready)
+- HMAC signed expiring URLs for gated assets
+- Optional **Postgres** persistence (`USE_PRISMA=true`)
+- Optional **MinIO/S3** object storage (`S3_ENDPOINT`)
+- Optional **Stripe** live gateway (`STRIPE_SECRET_KEY`)
+- Optional **Meilisearch** character indexing (`MEILI_HOST`)
+
+---
+
+## Monorepo
+
+```
+apps/web          Next.js 14 + Tailwind + Framer Motion
+apps/api          NestJS REST API (all phase modules)
+packages/shared   DTOs, enums, money, ledger interfaces
+packages/db       Prisma schema + seed + migrations
+```
+
+---
+
+## Optional Docker infra
+
+```bash
+pnpm infra:up
 cp .env.example .env
 pnpm db:generate && pnpm db:migrate && pnpm db:seed
 ```
 
-The web app defaults to `NEXT_PUBLIC_USE_MOCK_DATA=true`, so the homepage grid
-works immediately with zero backend. Set it to `false` to hit the NestJS API.
+Postgres seed loads 120 org-listed characters. The API defaults to **in-memory mode** so Docker is
+**not required** for local dev. Set `USE_PRISMA=true` to persist users, orders, and listings.
 
 ---
 
-## Phase 1 scope — complete
+## Health check
 
-Delivered:
+```bash
+curl http://localhost:4000/api/health
+```
 
-- ✅ Monorepo scaffold (web + api + shared + db)
-- ✅ Full Prisma data model for all core entities
-- ✅ Homepage grid (120 characters, virtualised, filters, blur-up)
-- ✅ Character detail + **working Buy checkout UI** (wallet top-up → purchase)
-- ✅ **Auth:** JWT register/login + Google stub + RBAC guards
-- ✅ **Wallet top-up** → escrow hold → auto-release (30% take)
-- ✅ **Rights certificates** + public verify endpoint
-- ✅ **Buyer dashboard** — licenses, certificates, signed download links
-- ✅ **Signed expiring URLs** for locked assets (HMAC-gated download endpoint)
+Returns phase flags and infrastructure mode (prisma, storage, stripe, meilisearch).
 
-Demo account: `buyer@synthetica.dev` / `demo1234`
-
-### Key rules honoured
-
-- Locked sheets never in DOM/network before purchase; signed URLs after license
-- Previews watermarked/downsampled
-- Append-only double-entry ledger; certificates anchor `ledgerHash`
-- SynthID/watermark fields on every character
+See [`docs/ASSUMPTIONS.md`](docs/ASSUMPTIONS.md) for confirmed product decisions.

@@ -99,6 +99,65 @@ export default function DashboardPage() {
 
         {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
 
+        <div className="mt-6 card-surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-display text-sm font-bold uppercase tracking-wide text-ink">
+              Creator Studio
+            </p>
+            <p className="mt-1 text-xs text-ink-secondary">
+              List synthetic characters and earn on every license sold.
+            </p>
+          </div>
+          <Link
+            href={user?.role === 'CREATOR' || user?.role === 'ADMIN' ? '/studio' : '/studio/become-creator'}
+            className="btn-lime shrink-0 !text-xs"
+          >
+            {user?.role === 'CREATOR' || user?.role === 'ADMIN' ? 'Open studio' : 'Become a creator'}
+          </Link>
+        </div>
+
+        <div className="mt-4 card-surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-display text-sm font-bold uppercase tracking-wide text-ink">
+              Commission gigs
+            </p>
+            <p className="mt-1 text-xs text-ink-secondary">
+              Post briefs or bid on freelance work with escrow protection.
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <Link href="/gigs" className="btn-ghost !text-xs">
+              Browse gigs
+            </Link>
+            <Link
+              href={
+                user?.role === 'FREELANCER' || user?.role === 'ADMIN'
+                  ? '/gigs'
+                  : '/gigs/become-freelancer'
+              }
+              className="btn-lime !text-xs"
+            >
+              {user?.role === 'FREELANCER' || user?.role === 'ADMIN'
+                ? 'Open gigs'
+                : 'Become a freelancer'}
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-4 card-surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-display text-sm font-bold uppercase tracking-wide text-ink">
+              AI Feed
+            </p>
+            <p className="mt-1 text-xs text-ink-secondary">
+              Synthetic influencer reels and drops from the marketplace.
+            </p>
+          </div>
+          <Link href="/feed" className="btn-ghost shrink-0 !text-xs">
+            Open feed
+          </Link>
+        </div>
+
         <section className="mt-10">
           <h2 className="font-display text-[10px] font-bold uppercase tracking-label text-ink-dim">
             Licenses · {orders.length}
@@ -132,14 +191,12 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-mono text-xs font-semibold text-lime">{o.certificate.serial}</p>
-                      <a
-                        href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'}/api/certificates/verify/${o.certificate.serial}`}
-                        target="_blank"
-                        rel="noreferrer"
+                      <Link
+                        href={`/verify/${o.certificate.serial}`}
                         className="text-[10px] font-semibold uppercase tracking-label text-ink-dim hover:text-lime"
                       >
-                        Verify ↗
-                      </a>
+                        Verify certificate
+                      </Link>
                     </div>
                   </div>
 

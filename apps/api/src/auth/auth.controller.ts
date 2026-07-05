@@ -28,4 +28,16 @@ export class AuthController {
   me(@CurrentUser() user: JwtPayload) {
     return this.auth.me(user.sub);
   }
+
+  @Post('become-creator')
+  @UseGuards(JwtAuthGuard)
+  becomeCreator(@CurrentUser() user: JwtPayload) {
+    return this.auth.becomeCreator(user.sub);
+  }
+
+  @Post('become-freelancer')
+  @UseGuards(JwtAuthGuard)
+  becomeFreelancer(@CurrentUser() user: JwtPayload) {
+    return this.auth.becomeFreelancer(user.sub);
+  }
 }

@@ -43,6 +43,45 @@ export class AuthService {
     };
     this.users.set(id, record);
     this.byEmail.set(record.email.toLowerCase(), id);
+
+    const creatorId = 'user_demo_creator';
+    const creator: UserRecord = {
+      id: creatorId,
+      email: 'creator@synthetica.dev',
+      passwordHash: bcrypt.hashSync('demo1234', 10),
+      displayName: 'Demo Creator',
+      role: UserRole.CREATOR,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    };
+    this.users.set(creatorId, creator);
+    this.byEmail.set(creator.email.toLowerCase(), creatorId);
+
+    const adminId = 'user_demo_admin';
+    const admin: UserRecord = {
+      id: adminId,
+      email: 'admin@synthetica.dev',
+      passwordHash: bcrypt.hashSync('demo1234', 10),
+      displayName: 'Platform Admin',
+      role: UserRole.ADMIN,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    };
+    this.users.set(adminId, admin);
+    this.byEmail.set(admin.email.toLowerCase(), adminId);
+
+    const freelancerId = 'user_demo_freelancer';
+    const freelancer: UserRecord = {
+      id: freelancerId,
+      email: 'freelancer@synthetica.dev',
+      passwordHash: bcrypt.hashSync('demo1234', 10),
+      displayName: 'Demo Freelancer',
+      role: UserRole.FREELANCER,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    };
+    this.users.set(freelancerId, freelancer);
+    this.byEmail.set(freelancer.email.toLowerCase(), freelancerId);
   }
 
   findById(id: string): UserRecord | undefined {
@@ -114,6 +153,26 @@ export class AuthService {
   me(userId: string): AuthUserDTO {
     const user = this.users.get(userId);
     if (!user) throw new UnauthorizedException();
+    return this.toDto(user);
+  }
+
+  becomeCreator(userId: string): AuthUserDTO {
+    const user = this.users.get(userId);
+    if (!user) throw new UnauthorizedException();
+    if (user.role === UserRole.CREATOR || user.role === UserRole.ADMIN) {
+      return this.toDto(user);
+    }
+    user.role = UserRole.CREATOR;
+    return this.toDto(user);
+  }
+
+  becomeFreelancer(userId: string): AuthUserDTO {
+    const user = this.users.get(userId);
+    if (!user) throw new UnauthorizedException();
+    if (user.role === UserRole.FREELANCER || user.role === UserRole.ADMIN) {
+      return this.toDto(user);
+    }
+    user.role = UserRole.FREELANCER;
     return this.toDto(user);
   }
 

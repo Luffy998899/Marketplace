@@ -54,12 +54,26 @@ export function Header({ total }: { total?: number }) {
           ))}
         </select>
 
+        <Link href="/feed" className="btn-ghost hidden !px-2 !py-1.5 !text-[10px] shrink-0 md:inline-flex sm:!px-3 sm:!text-xs">
+          Feed
+        </Link>
+        <Link href="/gigs" className="btn-ghost hidden !px-2 !py-1.5 !text-[10px] shrink-0 md:inline-flex sm:!px-3 sm:!text-xs">
+          Gigs
+        </Link>
+
         {!loading &&
           (user ? (
-            <Link href="/dashboard" className="btn-lime !px-3 !py-1.5 !text-[10px] shrink-0 sm:!px-4 sm:!py-2 sm:!text-xs">
-              <span className="hidden sm:inline">{user.displayName.split(' ')[0]}</span>
-              <span className="sm:hidden">Dash</span>
-            </Link>
+            <div className="flex shrink-0 items-center gap-2">
+              {(user.role === 'CREATOR' || user.role === 'ADMIN') && (
+                <Link href="/studio" className="btn-ghost !px-3 !py-1.5 !text-[10px] sm:!px-4 sm:!py-2 sm:!text-xs">
+                  Studio
+                </Link>
+              )}
+              <Link href="/dashboard" className="btn-lime !px-3 !py-1.5 !text-[10px] sm:!px-4 sm:!py-2 sm:!text-xs">
+                <span className="hidden sm:inline">{user.displayName.split(' ')[0]}</span>
+                <span className="sm:hidden">Dash</span>
+              </Link>
+            </div>
           ) : (
             <Link href="/login" className="btn-ghost !px-3 !py-1.5 !text-[10px] shrink-0 sm:!px-4 sm:!py-2 sm:!text-xs">
               Sign in

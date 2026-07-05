@@ -1,7 +1,8 @@
 'use client';
 
 import { create } from 'zustand';
-import { authApi, setToken, getToken } from '@/lib/api';
+import { UserRole } from '@acm/shared';
+import { authApi, commissionsApi, setToken, getToken, studioApi } from '@/lib/api';
 
 interface AuthUser {
   id: string;
@@ -17,10 +18,14 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, displayName: string) => Promise<void>;
   googleLogin: () => Promise<void>;
+  becomeCreator: () => Promise<void>;
+  becomeFreelancer: () => Promise<void>;
   logout: () => void;
+  isCreator: () => boolean;
+  isFreelancer: () => boolean;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   loading: true,
 
@@ -60,8 +65,28 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user: res.user });
   },
 
+  becomeCreator: async () => {
+    const user = await studioApi.becomeCreator();
+    set({ user });
+  },
+
+  becomeFreelancer: async () => {
+    const user = await commissionsApi.becomeFreelancer();
+    set({ user });
+  },
+
   logout: () => {
     setToken(null);
     set({ user: null });
+  },
+
+  isCreator: () => {
+    const role = get().user?.role;
+    return role === UserRole.CREATOR || role === UserRole.ADMIN;
+  },
+
+  isFreelancer: () => {
+    const role = get().user?.role;
+    return role === UserRole.FREELANCER || role === UserRole.ADMIN;
   },
 }));

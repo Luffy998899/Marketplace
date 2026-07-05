@@ -1,11 +1,18 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'node:path';
+import { mkdirSync } from 'node:fs';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const uploadDir = join(process.cwd(), 'uploads');
+  mkdirSync(uploadDir, { recursive: true });
+
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.setGlobalPrefix('api');
   app.enableCors({ origin: true, credentials: true });
-  // Request validation is handled per-route via zod schemas (see controllers).
+  app.useStaticAssets(uploadDir, { prefix: '/api/uploads/' });
+
   const port = process.env.API_PORT ? Number(process.env.API_PORT) : 4000;
   await app.listen(port);
   // eslint-disable-next-line no-console

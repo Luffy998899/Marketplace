@@ -7,7 +7,7 @@ import {
 } from '@acm/shared';
 import { randomUUID } from 'node:crypto';
 import { InMemoryLedgerService } from '../ledger/ledger.service';
-import { StubRazorpayGateway, StubStripeGateway } from './payment-gateways';
+import { RazorpayGateway, StripeGateway } from './payment-gateways';
 
 export interface TopUpRecord {
   id: string;
@@ -35,8 +35,8 @@ export class WalletService {
 
   constructor(
     private readonly ledger: InMemoryLedgerService,
-    private readonly stripe: StubStripeGateway,
-    private readonly razorpay: StubRazorpayGateway,
+    private readonly stripe: StripeGateway,
+    private readonly razorpay: RazorpayGateway,
   ) {}
 
   async getBalance(userId: string, currency = DEFAULT_CURRENCY): Promise<WalletBalanceDTO> {
