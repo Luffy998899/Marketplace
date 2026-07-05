@@ -56,6 +56,19 @@ export class AuthService {
     };
     this.users.set(creatorId, creator);
     this.byEmail.set(creator.email.toLowerCase(), creatorId);
+
+    const adminId = 'user_demo_admin';
+    const admin: UserRecord = {
+      id: adminId,
+      email: 'admin@synthetica.dev',
+      passwordHash: bcrypt.hashSync('demo1234', 10),
+      displayName: 'Platform Admin',
+      role: UserRole.ADMIN,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    };
+    this.users.set(adminId, admin);
+    this.byEmail.set(admin.email.toLowerCase(), adminId);
   }
 
   findById(id: string): UserRecord | undefined {

@@ -1,140 +1,86 @@
 # Synthetica — AI Character Marketplace
 
-The world's first **AI Character Marketplace**: a platform where fully synthetic
-AI avatars / virtual influencers are discovered, licensed, and traded. Humans
-only **list** and **buy** — the platform automates discovery, licensing, payment
-custody (escrow), and delivery.
+The world's first **AI Character Marketplace**: discover, license, and trade fully synthetic
+AI avatars / virtual influencers.
 
-> **Status: Phase 1 MVP complete · Phase 2 Creator Studio in progress.** Discovery grid,
-> auth, wallet checkout, escrow, buyer dashboard, and Creator Studio listing wizard are
-> implemented. Production hardening (real Stripe/Razorpay, Postgres persistence, S3/R2) is
-> Phase 1.x polish — see [`docs/ASSUMPTIONS.md`](docs/ASSUMPTIONS.md).
+> **Status: Complete MVP.** Marketplace, buyer checkout, Creator Studio, moderation, certificate
+> verification, and signed asset delivery — ready to run locally. See
+> [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for the full stack guide.
 
 ---
 
-## Monorepo structure
-
-```
-.
-├── apps/
-│   ├── web/                 # Next.js 14 (App Router) + Tailwind + Framer Motion
-│   │   └── src/
-│   │       ├── app/         # routes: / (grid), /character/[slug] (detail)
-│   │       ├── components/  # CharacterGrid (virtualised), CharacterCard, FilterRail, …
-│   │       ├── lib/data.ts  # data source abstraction (mock ⇄ live API)
-│   │       └── store/       # Zustand filter state
-│   └── api/                 # NestJS (REST). characters + ledger/escrow modules
-│       └── src/
-│           ├── characters/  # list + detail (mock-backed, DTO-identical to web)
-│           └── ledger/      # in-memory double-entry ledger + escrow scaffold
-├── packages/
-│   ├── shared/              # framework-agnostic types, enums, DTOs, money helpers,
-│   │   └── src/             # and the Ledger / Escrow / PaymentGateway interfaces
-│   └── db/                  # Prisma schema (source of truth) + client + seed
-│       └── prisma/schema.prisma
-├── docker-compose.yml       # postgres + redis + meilisearch + minio (S3/R2 stand-in)
-├── docs/ASSUMPTIONS.md      # open product decisions flagged for confirmation
-├── pnpm-workspace.yaml
-└── .env.example
-```
-
-### Package graph
-
-- `@acm/shared` — zero-dependency (except zod) domain layer. Both the web app and
-  the API import DTOs, enums, money math, and the ledger/escrow/payment
-  **interfaces** from here so contracts never drift.
-- `@acm/db` — Prisma schema + generated client + seed. The single source of truth
-  for the data model.
-- `@acm/web` / `@acm/api` — apps.
-
----
-
-## Tech stack
-
-| Concern      | Choice |
-|--------------|--------|
-| Frontend     | Next.js 14 (App Router), React 18, TypeScript, Tailwind, Framer Motion |
-| Grid/Media   | `react-virtuoso` (`VirtuosoGrid`, window-scroll) + `next/image` blur-up |
-| State/Data   | React Query (server state) + Zustand (filter state) |
-| Backend      | NestJS (REST; WebSocket + Socket.io planned for realtime) |
-| DB / Cache   | PostgreSQL (Prisma) + Redis |
-| Search       | Meilisearch |
-| Storage      | S3 / Cloudflare R2 with **signed, expiring URLs** for gated assets |
-| Payments     | Stripe + Razorpay (dual gateway) behind a `PaymentGateway` interface |
-| Ledger       | In-DB double-entry for MVP, abstracted behind a `Ledger` interface |
-| Auth         | JWT + Google OAuth + RBAC (register/login + guards) |
-
----
-
-## Getting started
+## Run locally (full stack)
 
 ```bash
-# 1. install
-pnpm install
+pnpm install && pnpm build:shared
 
-# 2. build the shared domain package (web/api consume its compiled output)
-pnpm build:shared
+pnpm dev:api    # http://localhost:4000/api
+pnpm dev:web    # http://localhost:3000
+```
 
-# 3a. run the web app with the local mock dataset (no backend/DB needed)
-pnpm dev:web            # http://localhost:3000
+Copy `apps/web/.env.local.example` → `apps/web/.env.local` and set
+`NEXT_PUBLIC_USE_MOCK_DATA=false` so creator listings and purchases use the live API.
 
-# 3b. (optional) run the API too — identical DTO contract
-pnpm dev:api            # http://localhost:4000/api
+### Demo accounts
 
-# 4. (optional) real infra + seeded DB of 120 live characters
-pnpm infra:up           # postgres, redis, meilisearch, minio
+| Role | Email | Password |
+|------|-------|----------|
+| Buyer | buyer@synthetica.dev | demo1234 |
+| Creator | creator@synthetica.dev | demo1234 |
+| Admin | admin@synthetica.dev | demo1234 |
+
+---
+
+## Features
+
+### Marketplace (buyers)
+- Cinematic homepage bento grid with filters, video hover previews, infinite scroll
+- Character detail + wallet checkout (top-up → escrow → auto-release, 30% platform take)
+- Buyer dashboard — licenses, signed locked-asset downloads, certificate links
+- Public certificate verification at `/verify/[serial]`
+
+### Creator Studio (sellers)
+- `/studio` — dashboard, earnings, listing management
+- 5-step listing wizard: Identity → Assets → SynthID → Rights → Moderation
+- File upload to API (`uploads/` locally; S3/R2 in production)
+- Live listings merged into marketplace catalog
+
+### Platform
+- JWT auth + RBAC (buyer, creator, admin)
+- Double-entry ledger + escrow (in-memory dev; Prisma-ready schema)
+- Moderation queue at `/admin/moderation` (toggle via `MODERATION_AUTO_APPROVE`)
+- HMAC signed expiring URLs for gated assets
+
+---
+
+## Monorepo
+
+```
+apps/web          Next.js 14 + Tailwind + Framer Motion
+apps/api          NestJS REST API
+packages/shared   DTOs, enums, money, ledger interfaces
+packages/db       Prisma schema + seed (optional Docker infra)
+```
+
+---
+
+## Optional Docker infra
+
+```bash
+pnpm infra:up
 cp .env.example .env
 pnpm db:generate && pnpm db:migrate && pnpm db:seed
 ```
 
-The web app defaults to `NEXT_PUBLIC_USE_MOCK_DATA=true`, so the homepage grid
-works immediately with zero backend. Set it to `false` to hit the NestJS API.
+Postgres seed loads 120 org-listed characters. The API defaults to in-memory mode so Docker is **not required** for local dev.
 
 ---
 
-## Phase 1 scope — complete
+## Production hardening (next steps)
 
-Delivered:
+- Wire Prisma persistence (`USE_PRISMA` — schema complete)
+- Real Stripe / Razorpay gateways
+- S3 / Cloudflare R2 instead of local uploads
+- Meilisearch indexing for search at scale
 
-- ✅ Monorepo scaffold (web + api + shared + db)
-- ✅ Full Prisma data model for all core entities
-- ✅ Homepage grid (120 characters, virtualised, filters, blur-up)
-- ✅ Character detail + **working Buy checkout UI** (wallet top-up → purchase)
-- ✅ **Auth:** JWT register/login + Google stub + RBAC guards
-- ✅ **Wallet top-up** → escrow hold → auto-release (30% take)
-- ✅ **Rights certificates** + public verify endpoint
-- ✅ **Buyer dashboard** — licenses, certificates, signed download links
-- ✅ **Signed expiring URLs** for locked assets (HMAC-gated download endpoint)
-
-Demo account: `buyer@synthetica.dev` / `demo1234`
-Demo creator: `creator@synthetica.dev` / `demo1234`
-
-### Key rules honoured
-
-- Locked sheets never in DOM/network before purchase; signed URLs after license
-- Previews watermarked/downsampled
-- Append-only double-entry ledger; certificates anchor `ledgerHash`
-- SynthID/watermark fields on every character
-
----
-
-## Phase 2 — Creator Studio (in progress)
-
-Delivered:
-
-- ✅ Creator role + `POST /auth/become-creator`
-- ✅ Studio API — listing CRUD, 5-step wizard (identity → assets → SynthID → rights → moderation)
-- ✅ Creator Studio UI at `/studio` — dashboard, new listing, step wizard
-- ✅ Live creator listings merged into marketplace catalog (requires API + `NEXT_PUBLIC_USE_MOCK_DATA=false`)
-- ✅ Seller payouts route to creator wallet (`PAYOUT_PENDING`, 70% net)
-
-**Try it locally:**
-
-```bash
-pnpm dev:api    # :4000
-pnpm dev:web    # :3000 — set NEXT_PUBLIC_USE_MOCK_DATA=false in apps/web/.env.local
-```
-
-1. Sign in as `creator@synthetica.dev` / `demo1234` (or register, then visit `/studio/become-creator`)
-2. Create a listing → run the 5-step wizard (use “Upload sample assets” for quick demo)
-3. Submit — auto-approved in dev → character appears on homepage grid
+See [`docs/ASSUMPTIONS.md`](docs/ASSUMPTIONS.md) for confirmed product decisions.

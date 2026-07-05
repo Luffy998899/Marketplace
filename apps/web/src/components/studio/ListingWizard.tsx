@@ -215,8 +215,7 @@ export function ListingWizard({ listingId }: { listingId: string }) {
         {step === 'ASSET_UPLOAD' && (
           <div className="mt-6 space-y-4">
             <p className="text-xs text-ink-dim">
-              Mock upload — paste a URL or use sample placeholders. Production swaps to S3/R2
-              presigned uploads.
+              Upload real files (saved locally on the API server) or use sample placeholder URLs.
             </p>
             <ul className="space-y-2">
               {listing.assets.map((asset) => (
@@ -231,13 +230,29 @@ export function ListingWizard({ listingId }: { listingId: string }) {
                       {asset.isLocked ? ' · locked' : ''}
                     </p>
                   </div>
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-label ${
-                      asset.uploaded ? 'text-lime' : 'text-ink-dim'
-                    }`}
-                  >
-                    {asset.uploaded ? 'Uploaded' : 'Pending'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-[10px] font-bold uppercase tracking-label ${
+                        asset.uploaded ? 'text-lime' : 'text-ink-dim'
+                      }`}
+                    >
+                      {asset.uploaded ? 'Done' : 'Pending'}
+                    </span>
+                    <label className="btn-ghost cursor-pointer !px-2 !py-1 !text-[10px]">
+                      Upload
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept={asset.kind === 'VIDEO' ? 'video/*' : 'image/*,.zip'}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          await run(() => studioApi.uploadFile(listingId, asset.kind, file));
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -251,9 +266,9 @@ export function ListingWizard({ listingId }: { listingId: string }) {
                   return studioApi.getListing(listingId);
                 })
               }
-              className="btn-lime disabled:opacity-50"
+              className="btn-ghost disabled:opacity-50"
             >
-              Upload sample assets
+              Or use sample URLs
             </button>
           </div>
         )}
@@ -310,9 +325,7 @@ export function ListingWizard({ listingId }: { listingId: string }) {
           <div className="mt-6 space-y-4">
             {listing.status === 'LIVE' ? (
               <>
-                <p className="text-sm text-lime">
-                  Your character is live on the marketplace.
-                </p>
+                <p className="text-sm text-lime">Your character is live on the marketplace.</p>
                 <div className="flex flex-wrap gap-3">
                   <Link href={`/character/${listing.slug}`} className="btn-lime">
                     View listing
@@ -321,6 +334,25 @@ export function ListingWizard({ listingId }: { listingId: string }) {
                     Browse marketplace
                   </Link>
                 </div>
+              </>
+            ) : listing.status === 'IN_REVIEW' ? (
+              <>
+                <p className="text-sm text-ink-secondary">
+                  Submitted — waiting for moderation approval.
+                </p>
+                {listing.moderationNotes && (
+                  <p className="text-xs text-ink-dim">{listing.moderationNotes}</p>
+                )}
+              </>
+            ) : listing.status === 'CHANGES_REQUESTED' ? (
+              <>
+                <p className="text-sm text-red-400">Changes requested by moderation.</p>
+                {listing.moderationNotes && (
+                  <p className="rounded-card border border-border bg-canvas-deep p-3 text-sm text-ink-secondary">
+                    {listing.moderationNotes}
+                  </p>
+                )}
+                <p className="text-xs text-ink-dim">Update your listing and re-submit from step 4.</p>
               </>
             ) : (
               <>
@@ -346,7 +378,9 @@ export function ListingWizard({ listingId }: { listingId: string }) {
                   Submit for review
                 </button>
                 <p className="text-xs text-ink-dim">
-                  Dev mode auto-approves instantly so you can test the full flow locally.
+                  With <code className="text-lime">MODERATION_AUTO_APPROVE=true</code> (default), listings
+                  go live instantly. Set it to <code className="text-lime">false</code> to test the admin
+                  queue at <Link href="/admin/moderation" className="text-lime hover:underline">/admin/moderation</Link>.
                 </p>
               </>
             )}

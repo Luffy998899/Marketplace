@@ -149,14 +149,12 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-mono text-xs font-semibold text-lime">{o.certificate.serial}</p>
-                      <a
-                        href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'}/api/certificates/verify/${o.certificate.serial}`}
-                        target="_blank"
-                        rel="noreferrer"
+                      <Link
+                        href={`/verify/${o.certificate.serial}`}
                         className="text-[10px] font-semibold uppercase tracking-label text-ink-dim hover:text-lime"
                       >
-                        Verify ↗
-                      </a>
+                        Verify certificate
+                      </Link>
                     </div>
                   </div>
 

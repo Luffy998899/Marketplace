@@ -20,6 +20,11 @@ export function SiteHeader() {
         {!loading &&
           (user ? (
             <div className="flex items-center gap-2">
+              {(user.role === 'ADMIN' || user.role === 'MODERATOR') && (
+                <Link href="/admin/moderation" className="btn-ghost !px-3 !py-1.5 !text-[10px] sm:!text-xs">
+                  Moderation
+                </Link>
+              )}
               {(user.role === 'CREATOR' || user.role === 'ADMIN') && (
                 <Link href="/studio" className="btn-ghost !px-3 !py-1.5 !text-[10px] sm:!text-xs">
                   Studio

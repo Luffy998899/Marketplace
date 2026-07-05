@@ -108,23 +108,32 @@ export class OrdersService {
 
   verifyCertificate(serial: string): {
     valid: boolean;
+    serial?: string;
     orderId?: string;
     ledgerHash?: string;
     buyerId?: string;
     characterSlug?: string;
+    characterName?: string;
+    licenseType?: string;
+    purchasedAt?: string;
+    message?: string;
   } {
     for (const order of this.orders.values()) {
       if (order.certificate.serial === serial) {
         return {
           valid: true,
+          serial: order.certificate.serial,
           orderId: order.orderId,
           ledgerHash: order.certificate.ledgerHash,
           buyerId: order.buyerId,
           characterSlug: order.characterSlug,
+          characterName: order.characterName,
+          licenseType: order.licenseType,
+          purchasedAt: order.purchasedAt,
         };
       }
     }
-    return { valid: false };
+    return { valid: false, serial, message: 'Certificate not found or invalid' };
   }
 
   private resolveCharacter(slug: string): CharacterDetailDTO | null {

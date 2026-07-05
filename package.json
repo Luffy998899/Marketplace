@@ -11,6 +11,7 @@
     "dev": "pnpm --parallel -r --filter \"./apps/*\" dev",
     "dev:web": "pnpm --filter @acm/web dev",
     "dev:api": "pnpm --filter @acm/api dev",
+    "dev:full": "pnpm build:shared && pnpm --parallel -r --filter \"@acm/api\" --filter \"@acm/web\" dev",
     "build": "pnpm -r build",
     "build:shared": "pnpm --filter @acm/shared build",
     "build:db": "pnpm --filter @acm/db build",

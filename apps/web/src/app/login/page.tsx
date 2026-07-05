@@ -39,6 +39,8 @@ export default function LoginPage() {
           Demo buyer: buyer@synthetica.dev / demo1234
           <br />
           Demo creator: creator@synthetica.dev / demo1234
+          <br />
+          Demo admin: admin@synthetica.dev / demo1234
         </p>
 
         <form onSubmit={onSubmit} className="card-surface mt-8 space-y-4 p-6">

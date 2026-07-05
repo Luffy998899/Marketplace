@@ -163,4 +163,50 @@ export const studioApi = {
     api<import('@acm/shared').CreatorListingDTO>(`/studio/listings/${id}/submit`, {
       method: 'POST',
     }),
+  uploadFile: async (id: string, kind: string, file: File) => {
+    const token = getToken();
+    const form = new FormData();
+    form.append('file', file);
+    form.append('kind', kind);
+    const res = await fetch(`${API_URL}/api/studio/listings/${id}/upload`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }));
+      throw new Error(err.message ?? 'Upload failed');
+    }
+    return res.json() as Promise<import('@acm/shared').CreatorListingDTO>;
+  },
+};
+
+export const moderationApi = {
+  queue: () =>
+    api<Array<import('@acm/shared').CreatorListingDTO>>('/moderation/queue'),
+  approve: (listingId: string, notes?: string) =>
+    api<import('@acm/shared').CreatorListingDTO>(`/moderation/${listingId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ notes }),
+    }),
+  reject: (listingId: string, notes: string) =>
+    api<import('@acm/shared').CreatorListingDTO>(`/moderation/${listingId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ notes }),
+    }),
+};
+
+export const certificatesApi = {
+  verify: (serial: string) =>
+    api<{
+      valid: boolean;
+      serial?: string;
+      orderId?: string;
+      ledgerHash?: string;
+      characterSlug?: string;
+      characterName?: string;
+      licenseType?: string;
+      purchasedAt?: string;
+      message?: string;
+    }>(`/certificates/verify/${encodeURIComponent(serial)}`),
 };

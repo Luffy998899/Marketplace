@@ -287,8 +287,18 @@ export class StudioService {
     record.moderationDecision = ModerationDecision.PENDING;
     record.updatedAt = new Date().toISOString();
 
-    // Dev auto-moderation — instant approve so creators see listings live locally.
-    return this.approveListing(record.id, 'Auto-approved in dev mode.');
+    const autoApprove = process.env.MODERATION_AUTO_APPROVE !== 'false';
+    if (autoApprove) {
+      return this.approveListing(record.id, 'Auto-approved (MODERATION_AUTO_APPROVE=true).');
+    }
+    return this.toDto(record);
+  }
+
+  listPendingReview(): CreatorListingDTO[] {
+    return [...this.listings.values()]
+      .filter((r) => r.status === CharacterStatus.IN_REVIEW)
+      .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt))
+      .map((r) => this.toDto(r));
   }
 
   approveListing(listingId: string, notes?: string): CreatorListingDTO {
@@ -299,6 +309,18 @@ export class StudioService {
     record.checklist.currentStep = 'MODERATION_REVIEW';
     record.moderationDecision = ModerationDecision.APPROVED;
     record.moderationNotes = notes;
+    record.updatedAt = new Date().toISOString();
+    return this.toDto(record);
+  }
+
+  rejectListing(listingId: string, notes: string): CreatorListingDTO {
+    const record = this.listings.get(listingId);
+    if (!record) throw new NotFoundException('Listing not found');
+    record.status = CharacterStatus.CHANGES_REQUESTED;
+    record.checklist.moderationPassed = false;
+    record.moderationDecision = ModerationDecision.REJECTED;
+    record.moderationNotes = notes;
+    record.checklist.currentStep = 'RIGHTS_DECLARATION';
     record.updatedAt = new Date().toISOString();
     return this.toDto(record);
   }
@@ -330,7 +352,10 @@ export class StudioService {
   }
 
   private assertEditable(record: ListingRecord) {
-    if (record.status !== CharacterStatus.DRAFT) {
+    if (
+      record.status !== CharacterStatus.DRAFT &&
+      record.status !== CharacterStatus.CHANGES_REQUESTED
+    ) {
       throw new BadRequestException('Listing cannot be edited in its current status');
     }
   }

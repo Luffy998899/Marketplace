@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { CharactersModule } from './characters/characters.module';
 import { HealthController } from './health/health.controller';
 import { LedgerModule } from './ledger/ledger.module';
+import { ModerationModule } from './moderation/moderation.module';
 import { OrdersModule } from './orders/orders.module';
 import { StudioModule } from './studio/studio.module';
 import { WalletModule } from './wallet/wallet.module';
@@ -19,6 +20,7 @@ import { WalletModule } from './wallet/wallet.module';
     OrdersModule,
     AssetsModule,
     StudioModule,
+    ModerationModule,
   ],
   controllers: [HealthController],
 })
