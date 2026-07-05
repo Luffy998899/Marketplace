@@ -62,7 +62,7 @@ custody (escrow), and delivery.
 | Storage      | S3 / Cloudflare R2 with **signed, expiring URLs** for gated assets |
 | Payments     | Stripe + Razorpay (dual gateway) behind a `PaymentGateway` interface |
 | Ledger       | In-DB double-entry for MVP, abstracted behind a `Ledger` interface |
-| Auth         | JWT + Google OAuth + RBAC (models in place; endpoints Phase 1.x) |
+| Auth         | JWT + Google OAuth + RBAC (register/login + guards) |
 
 ---
 
