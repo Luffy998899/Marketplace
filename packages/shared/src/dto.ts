@@ -42,6 +42,8 @@ export interface CharacterCardDTO {
   verified: boolean;
   // Primary preview (watermarked). Aspect ratio drives masonry layout.
   cover: MediaAssetDTO;
+  /** Short loop clip for desktop hover preview (watermarked derivative). */
+  previewVideo?: MediaAssetDTO;
   fromPriceMinor: number; // cheapest active tier
   currency: string;
   licenseTypes: LicenseType[];

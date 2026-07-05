@@ -15,13 +15,22 @@ export default function HomePage() {
   const [total, setTotal] = useState<number>();
   const [mobileFilters, setMobileFilters] = useState(false);
   const activeCount = useFilterStore((s) => s.activeCount());
+  const { sort, setSort } = useFilterStore();
+
+  const SORTS = [
+    { value: 'trending' as const, label: 'Trending' },
+    { value: 'newest' as const, label: 'New' },
+    { value: 'rating' as const, label: 'Top rated' },
+    { value: 'price_asc' as const, label: 'Price ↑' },
+    { value: 'price_desc' as const, label: 'Price ↓' },
+  ];
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-screen overflow-x-clip">
       <AmbientBackground />
       <Header total={total} />
 
-      <section className="relative mx-auto max-w-[1600px] overflow-hidden px-4 pb-8 pt-10 sm:px-6 sm:pt-16">
+      <section className="relative mx-auto max-w-[1600px] overflow-hidden px-3 pb-6 pt-8 sm:px-6 sm:pb-8 sm:pt-16">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
@@ -41,7 +50,7 @@ export default function HomePage() {
             Locked assets unlock after purchase.
           </p>
 
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap gap-2.5 sm:mt-8 sm:gap-3">
             <a href="#explore" className="btn-lime">
               Explore grid
             </a>
@@ -69,7 +78,7 @@ export default function HomePage() {
 
       <div
         id="explore"
-        className="relative mx-auto flex max-w-[1600px] gap-6 px-4 pb-12 sm:px-6"
+        className="relative mx-auto flex max-w-[1600px] gap-6 px-3 pb-10 sm:px-6 sm:pb-12"
       >
         <aside className="hidden w-56 shrink-0 xl:block">
           <div className="sticky top-[4.5rem] max-h-[calc(100vh-5.5rem)]">
@@ -80,11 +89,22 @@ export default function HomePage() {
         <main className="min-w-0 flex-1">
           <FeaturedStrip />
 
-          <div className="mb-4 flex items-center justify-between xl:hidden">
-            <button onClick={() => setMobileFilters((v) => !v)} className="chip">
+          <div className="mb-4 flex items-center justify-between gap-2 xl:hidden">
+            <button onClick={() => setMobileFilters((v) => !v)} className="chip shrink-0">
               Filters{activeCount ? ` · ${activeCount}` : ''}
             </button>
-            <span className="text-[10px] font-semibold uppercase tracking-label text-ink-dim">
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as never)}
+              className="min-w-0 flex-1 truncate rounded-pill border border-border bg-surface px-2 py-1.5 text-[10px] font-medium uppercase tracking-label text-ink-secondary outline-none focus:border-lime/40 sm:hidden"
+            >
+              {SORTS.map((o) => (
+                <option key={o.value} value={o.value} className="bg-surface">
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <span className="hidden text-[10px] font-semibold uppercase tracking-label text-ink-dim sm:inline">
               Bento grid
             </span>
           </div>

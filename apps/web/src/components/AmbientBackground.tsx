@@ -3,13 +3,13 @@
 /** Subtle animated ambient layer — cinematic depth without distracting motion. */
 export function AmbientBackground() {
   return (
-    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden>
-      {/* Slow drifting lime orb */}
-      <div className="ambient-orb absolute -left-[20%] top-[10%] h-[50vmin] w-[50vmin] rounded-full bg-lime/[0.04] blur-[100px]" />
-      <div className="ambient-orb-delay absolute -right-[15%] top-[40%] h-[40vmin] w-[40vmin] rounded-full bg-lime/[0.03] blur-[90px]" />
-      {/* Perspective grid floor */}
+    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden overscroll-none" aria-hidden>
+      {/* Slow drifting lime orb — scaled down on mobile to prevent overflow */}
+      <div className="ambient-orb absolute -left-[25%] top-[8%] h-[35vmin] w-[35vmin] rounded-full bg-lime/[0.04] blur-[80px] sm:-left-[20%] sm:top-[10%] sm:h-[50vmin] sm:w-[50vmin] sm:blur-[100px]" />
+      <div className="ambient-orb-delay absolute -right-[20%] top-[35%] h-[30vmin] w-[30vmin] rounded-full bg-lime/[0.03] blur-[70px] sm:-right-[15%] sm:top-[40%] sm:h-[40vmin] sm:w-[40vmin] sm:blur-[90px]" />
+      {/* Perspective grid floor — hidden on small screens */}
       <div
-        className="absolute inset-x-0 bottom-0 h-[45vh] opacity-[0.035]"
+        className="absolute inset-x-0 bottom-0 hidden h-[40vh] opacity-[0.035] sm:block sm:h-[45vh]"
         style={{
           backgroundImage: `
             linear-gradient(rgba(209,254,23,0.5) 1px, transparent 1px),

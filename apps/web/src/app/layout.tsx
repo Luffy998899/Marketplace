@@ -4,6 +4,7 @@ import './globals.css';
 import { Providers } from './providers';
 import { SiteFooter } from '@/components/SiteFooter';
 import { TopLoader } from '@/components/TopLoader';
+import { CustomCursor } from '@/components/CustomCursor';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const spaceGrotesk = Space_Grotesk({
@@ -22,7 +23,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <body className="bg-cinema bg-vignette min-h-screen font-sans antialiased">
-        <div className="relative z-10 flex min-h-screen flex-col">
+        <div className="relative z-10 flex min-h-screen flex-col overflow-x-clip">
+          <CustomCursor />
           <TopLoader />
           <Providers>{children}</Providers>
           <SiteFooter />
