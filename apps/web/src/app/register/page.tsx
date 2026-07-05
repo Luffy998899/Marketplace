@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { SiteHeader } from '@/components/SiteHeader';
 import { useAuthStore } from '@/store/auth';
 
 export default function RegisterPage() {
@@ -29,51 +30,53 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 py-12">
-      <h1 className="text-2xl font-bold text-white">Create account</h1>
-      <p className="mt-1 text-sm text-white/50">Join as a buyer to license AI characters.</p>
+    <>
+      <SiteHeader />
+      <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 py-12">
+        <span className="badge-lime mb-4 w-fit">Join</span>
+        <h1 className="heading-display text-3xl font-bold">Create account</h1>
+        <p className="mt-2 text-sm text-ink-secondary">
+          License fully synthetic AI characters.
+        </p>
 
-      <form onSubmit={onSubmit} className="mt-6 space-y-4">
-        <input
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          placeholder="Display name"
-          required
-          className="w-full rounded-xl border border-white/10 bg-ink-800/60 px-4 py-2.5 text-sm text-white outline-none focus:border-neon-400"
-        />
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email"
-          required
-          className="w-full rounded-xl border border-white/10 bg-ink-800/60 px-4 py-2.5 text-sm text-white outline-none focus:border-neon-400"
-        />
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password (min 8 chars)"
-          minLength={8}
-          required
-          className="w-full rounded-xl border border-white/10 bg-ink-800/60 px-4 py-2.5 text-sm text-white outline-none focus:border-neon-400"
-        />
-        {error && <p className="text-sm text-rose-400">{error}</p>}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-full bg-neon-500 py-2.5 text-sm font-semibold text-white hover:bg-neon-400 disabled:opacity-50"
-        >
-          {loading ? 'Creating…' : 'Create account'}
-        </button>
-      </form>
+        <form onSubmit={onSubmit} className="card-surface mt-8 space-y-4 p-6">
+          <input
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="Display name"
+            required
+            className="input-field"
+          />
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email"
+            required
+            className="input-field"
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password (min 8 chars)"
+            minLength={8}
+            required
+            className="input-field"
+          />
+          {error && <p className="text-sm text-red-400">{error}</p>}
+          <button type="submit" disabled={loading} className="btn-lime w-full disabled:opacity-50">
+            {loading ? 'Creating…' : 'Create account'}
+          </button>
+        </form>
 
-      <p className="mt-6 text-center text-sm text-white/50">
-        Already have an account?{' '}
-        <Link href="/login" className="text-neon-300 hover:text-neon-200">
-          Sign in
-        </Link>
-      </p>
-    </div>
+        <p className="mt-8 text-center text-sm text-ink-dim">
+          Already have an account?{' '}
+          <Link href="/login" className="font-semibold text-lime hover:underline">
+            Sign in
+          </Link>
+        </p>
+      </div>
+    </>
   );
 }

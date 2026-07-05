@@ -1,14 +1,19 @@
-export function CardSkeleton() {
+import { BENTO_SPAN, getBentoSize } from '@/lib/bento';
+
+export function CardSkeleton({ index = 0 }: { index?: number }) {
+  const size = getBentoSize(index);
   return (
-    <div className="card-surface shimmer aspect-[3/4] w-full overflow-hidden rounded-2xl bg-ink-800/60" />
+    <div
+      className={`shimmer h-full min-h-[140px] overflow-hidden rounded-card border border-border bg-surface ${BENTO_SPAN[size]}`}
+    />
   );
 }
 
 export function GridSkeleton({ count = 12 }: { count?: number }) {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+    <div className="bento-grid">
       {Array.from({ length: count }).map((_, i) => (
-        <CardSkeleton key={i} />
+        <CardSkeleton key={i} index={i} />
       ))}
     </div>
   );

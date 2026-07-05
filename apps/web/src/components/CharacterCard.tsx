@@ -3,92 +3,101 @@
 import { formatMoney, type CharacterCardDTO } from '@acm/shared';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { BENTO_SPAN, type BentoSize } from '@/lib/bento';
 import { BlurImage } from './BlurImage';
 
 const LICENSE_LABEL: Record<string, string> = {
-  ONE_TIME: '$1 use',
+  ONE_TIME: '$1',
   CAMPAIGN: 'Campaign',
   FULL_RIGHTS: 'Full rights',
-  COMMISSION: 'Commission',
+  COMMISSION: 'Gig',
 };
 
-export function CharacterCard({ character }: { character: CharacterCardDTO }) {
+export function CharacterCard({
+  character,
+  index = 0,
+  bentoSize = 'standard',
+}: {
+  character: CharacterCardDTO;
+  index?: number;
+  bentoSize?: BentoSize;
+}) {
   const c = character;
+  const isFeature = bentoSize === 'feature';
+
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: 'easeOut' }}
-      className="group relative"
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.4, delay: Math.min(index * 0.025, 0.35), ease: [0.22, 1, 0.36, 1] }}
+      className={`group relative h-full min-h-0 ${BENTO_SPAN[bentoSize]}`}
     >
       <Link
         href={`/character/${c.slug}`}
-        className="card-surface block overflow-hidden rounded-2xl focus:outline-none focus:ring-2 focus:ring-neon-400"
+        className="card-surface card-interactive relative block h-full overflow-hidden rounded-card focus:outline-none focus-visible:shadow-lime"
       >
-        <div className="relative aspect-[3/4] w-full overflow-hidden">
+        {/* Lime accent bar — reveals on hover */}
+        <div className="absolute left-0 top-0 z-10 h-0.5 w-0 bg-lime transition-all duration-500 group-hover:w-full" />
+
+        <div className="relative h-full min-h-[140px] overflow-hidden bg-canvas-deep">
           <BlurImage
             src={c.cover.url}
             alt={c.name}
             blurDataUrl={c.cover.blurDataUrl}
-            className="transition-transform duration-500 group-hover:scale-105"
+            className="transition-transform duration-700 ease-out group-hover:scale-[1.06]"
           />
 
-          {/* watermark hint — previews are always watermarked */}
-          <span className="pointer-events-none absolute right-2 top-2 rounded-md bg-black/40 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white/70 backdrop-blur">
-            preview
+          <div className="absolute inset-0 bg-gradient-to-t from-canvas via-canvas/30 to-transparent" />
+
+          <span className="pointer-events-none absolute right-2.5 top-2.5 rounded-md bg-black/50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-label text-ink-secondary backdrop-blur-sm">
+            Preview
           </span>
 
           {!c.available && (
-            <span className="absolute left-2 top-2 rounded-md bg-rose-500/80 px-2 py-0.5 text-[10px] font-semibold uppercase text-white">
+            <span className="absolute left-2.5 top-2.5 rounded-pill bg-surface/90 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-label text-ink-secondary backdrop-blur-sm">
               Licensed
             </span>
           )}
 
-          {/* Always-visible bottom gradient with essentials */}
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-white">{c.name}</p>
-                <p className="truncate text-xs capitalize text-white/60">{c.niche}</p>
-              </div>
+          <div className={`absolute inset-x-0 bottom-0 p-3.5 ${isFeature ? 'sm:p-5' : ''}`}>
+            <p
+              className={`truncate font-display font-bold uppercase tracking-wide text-ink ${
+                isFeature ? 'text-base sm:text-xl' : 'text-sm'
+              }`}
+            >
+              {c.name}
+            </p>
+            <div className="mt-1 flex items-end justify-between gap-2">
+              <span className="text-[11px] font-medium uppercase tracking-label text-ink-dim capitalize">
+                {c.niche}
+              </span>
               <div className="text-right">
-                <p className="text-xs text-white/60">from</p>
-                <p className="text-sm font-bold text-neon-300">
+                <p className="text-[9px] font-semibold uppercase tracking-label text-ink-dim">from</p>
+                <p className={`font-display font-bold text-lime ${isFeature ? 'text-xl' : 'text-base'}`}>
                   {formatMoney(c.fromPriceMinor, c.currency)}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Hover reveal — richer detail */}
-          <div className="absolute inset-0 flex flex-col justify-between bg-ink-950/70 p-3 opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
-            <div className="flex items-center justify-between">
-              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] capitalize text-white/80">
-                {c.style}
-              </span>
-              <span className="flex items-center gap-1 text-xs font-medium text-amber-300">
-                ★ {c.rating.toFixed(1)}
-                <span className="text-white/50">({c.ratingCount})</span>
-              </span>
+          {/* Hover overlay */}
+          <div className="absolute inset-0 flex flex-col justify-between bg-canvas/90 p-3.5 opacity-0 backdrop-blur-md transition-all duration-300 group-hover:opacity-100">
+            <div className="flex items-start justify-between gap-2">
+              <span className="chip chip-active !text-[10px] capitalize">{c.style}</span>
+              <span className="text-xs font-semibold text-lime">★ {c.rating.toFixed(1)}</span>
             </div>
-
             <div>
-              <p className="text-base font-semibold text-white">{c.name}</p>
-              {c.tagline && <p className="mt-0.5 text-xs text-white/70">{c.tagline}</p>}
-              <div className="mt-2 flex flex-wrap gap-1">
+              <p className="font-display text-lg font-bold uppercase tracking-wide text-ink">{c.name}</p>
+              {c.tagline && (
+                <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-ink-secondary">{c.tagline}</p>
+              )}
+              <div className="mt-2.5 flex flex-wrap gap-1">
                 {c.licenseTypes.map((t) => (
-                  <span
-                    key={t}
-                    className="rounded-md border border-neon-500/40 bg-neon-500/10 px-1.5 py-0.5 text-[10px] font-medium text-neon-300"
-                  >
+                  <span key={t} className="badge-lime !px-2 !py-0.5 !text-[9px]">
                     {LICENSE_LABEL[t] ?? t}
                   </span>
                 ))}
-              </div>
-              <div className="mt-2 flex items-center gap-1 text-[11px] text-white/60">
-                <span className="truncate">{c.ownerName}</span>
-                {c.verified && <span className="text-accent">✓</span>}
               </div>
             </div>
           </div>

@@ -2,42 +2,18 @@
 
 import type { CharacterCardDTO } from '@acm/shared';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { forwardRef, useMemo } from 'react';
-import { VirtuosoGrid, type GridComponents } from 'react-virtuoso';
+import { useEffect, useMemo, useRef } from 'react';
 import { fetchCharacters } from '@/lib/data';
 import { useFilterStore } from '@/store/filters';
+import { getBentoSize } from '@/lib/bento';
 import { CharacterCard } from './CharacterCard';
-import { CardSkeleton, GridSkeleton } from './GridSkeleton';
+import { GridSkeleton } from './GridSkeleton';
 
 const PAGE_SIZE = 24;
 
-// Virtualised, responsive grid container. Only visible rows are mounted, so it
-// stays smooth at 1000+ items.
-const gridComponents: GridComponents = {
-  List: forwardRef<HTMLDivElement, { style?: React.CSSProperties; children?: React.ReactNode }>(
-    function List({ style, children, ...props }, ref) {
-      return (
-        <div
-          ref={ref}
-          {...props}
-          style={style}
-          className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-        >
-          {children}
-        </div>
-      );
-    },
-  ),
-  Item: ({ children, ...props }) => (
-    <div {...props} className="min-w-0">
-      {children}
-    </div>
-  ),
-};
-
 export function CharacterGrid({ onTotal }: { onTotal?: (n: number) => void }) {
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const toFilter = useFilterStore((s) => s.toFilter);
-  // Recompute the query key from every filter-affecting field.
   const deps = useFilterStore((s) => [
     s.q,
     s.gender,
@@ -66,16 +42,29 @@ export function CharacterGrid({ onTotal }: { onTotal?: (n: number) => void }) {
   const total = query.data?.pages[0]?.total ?? 0;
   if (onTotal && total) onTotal(total);
 
-  if (query.isLoading) return <GridSkeleton count={15} />;
+  // Infinite scroll via intersection observer (bento grid replaces uniform virtuoso).
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && query.hasNextPage && !query.isFetchingNextPage) {
+          query.fetchNextPage();
+        }
+      },
+      { rootMargin: '400px' },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [query]);
+
+  if (query.isLoading) return <GridSkeleton count={12} />;
 
   if (query.isError) {
     return (
-      <div className="grid place-items-center py-24 text-center text-white/60">
-        <p>Couldn’t load characters.</p>
-        <button
-          onClick={() => query.refetch()}
-          className="mt-3 rounded-full border border-neon-400 px-4 py-1.5 text-sm text-neon-200"
-        >
+      <div className="grid place-items-center py-24 text-center">
+        <p className="text-ink-secondary">Couldn&apos;t load characters.</p>
+        <button onClick={() => query.refetch()} className="btn-ghost mt-4 !text-xs">
           Retry
         </button>
       </div>
@@ -84,24 +73,38 @@ export function CharacterGrid({ onTotal }: { onTotal?: (n: number) => void }) {
 
   if (items.length === 0) {
     return (
-      <div className="grid place-items-center py-24 text-center text-white/50">
-        <p className="text-lg">No characters match your filters.</p>
-        <p className="text-sm">Try clearing a few filters.</p>
+      <div className="grid place-items-center py-24 text-center">
+        <p className="font-display text-lg uppercase tracking-wide text-ink-secondary">
+          No matches
+        </p>
+        <p className="mt-1 text-sm text-ink-dim">Try clearing filters.</p>
       </div>
     );
   }
 
   return (
-    <VirtuosoGrid
-      useWindowScroll
-      data={items}
-      components={gridComponents}
-      endReached={() => {
-        if (query.hasNextPage && !query.isFetchingNextPage) query.fetchNextPage();
-      }}
-      overscan={800}
-      itemContent={(_, character) => <CharacterCard character={character} />}
-      style={{ minHeight: '60vh' }}
-    />
+    <>
+      <div className="bento-grid">
+        {items.map((character, index) => (
+          <CharacterCard
+            key={character.id}
+            character={character}
+            index={index}
+            bentoSize={getBentoSize(index)}
+          />
+        ))}
+      </div>
+
+      <div ref={sentinelRef} className="h-4" aria-hidden />
+
+      {query.isFetchingNextPage && (
+        <div className="mt-6 flex justify-center">
+          <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-label text-ink-dim">
+            <span className="h-1.5 w-1.5 animate-pulse-lime rounded-full bg-lime" />
+            Loading more
+          </span>
+        </div>
+      )}
+    </>
   );
 }

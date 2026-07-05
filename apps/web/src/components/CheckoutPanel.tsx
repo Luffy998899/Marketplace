@@ -100,33 +100,33 @@ export function CheckoutPanel({
   return (
     <>
       <div className="mt-6 space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-white/40">
+        <h2 className="font-display text-[10px] font-bold uppercase tracking-label text-ink-dim">
           License tiers
         </h2>
         {character.licenseTiers.map((t) => (
           <div
             key={t.id}
-            className="flex items-center justify-between rounded-xl card-surface p-4"
+            className="card-surface flex items-center justify-between p-4"
           >
             <div>
-              <p className="font-semibold text-white">
+              <p className="font-display text-sm font-bold uppercase tracking-wide text-ink">
                 {t.name}
                 {t.exclusive && (
-                  <span className="ml-2 rounded bg-rose-500/20 px-1.5 py-0.5 text-[10px] uppercase text-rose-300">
-                    exclusive
+                  <span className="ml-2 badge-lime !bg-surface !text-ink-dim !text-[9px]">
+                    Exclusive
                   </span>
                 )}
               </p>
-              <p className="text-xs text-white/50">{t.description}</p>
+              <p className="mt-0.5 text-xs text-ink-secondary">{t.description}</p>
             </div>
             <div className="text-right">
-              <p className="text-lg font-bold text-neon-300">
+              <p className="font-display text-xl font-bold text-lime">
                 {formatMoney(t.priceMinor, t.currency)}
               </p>
               <button
                 onClick={() => startBuy(t)}
                 disabled={loading}
-                className="mt-1 rounded-full bg-neon-500 px-4 py-1 text-xs font-semibold text-white hover:bg-neon-400 disabled:opacity-50"
+                className="btn-lime mt-2 !px-4 !py-1.5 !text-[10px] disabled:opacity-50"
               >
                 Buy
               </button>
@@ -141,7 +141,7 @@ export function CheckoutPanel({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
             onClick={close}
           >
             <motion.div
@@ -149,24 +149,24 @@ export function CheckoutPanel({
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 8 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md rounded-2xl border border-white/10 bg-ink-900 p-6 shadow-2xl"
+              className="card-surface w-full max-w-md border-border p-6 shadow-lime"
             >
               {step === 'auth' && (
                 <>
-                  <h3 className="text-lg font-semibold text-white">Sign in to purchase</h3>
-                  <p className="mt-1 text-sm text-white/50">
+                  <h3 className="heading-display text-lg font-bold">Sign in to purchase</h3>
+                  <p className="mt-2 text-sm text-ink-secondary">
                     You need an account to license {character.name}.
                   </p>
-                  <div className="mt-4 flex gap-3">
+                  <div className="mt-5 flex gap-3">
                     <Link
                       href={`/login?next=/character/${character.slug}`}
-                      className="flex-1 rounded-full bg-neon-500 py-2 text-center text-sm font-semibold text-white"
+                      className="btn-lime flex-1 !text-xs"
                     >
                       Sign in
                     </Link>
                     <Link
                       href={`/register?next=/character/${character.slug}`}
-                      className="flex-1 rounded-full border border-white/15 py-2 text-center text-sm text-white/80"
+                      className="btn-ghost flex-1 !text-xs"
                     >
                       Register
                     </Link>
@@ -176,25 +176,27 @@ export function CheckoutPanel({
 
               {step === 'topup' && tier && (
                 <>
-                  <h3 className="text-lg font-semibold text-white">Top up wallet</h3>
-                  <p className="mt-1 text-sm text-white/50">
+                  <h3 className="heading-display text-lg font-bold">Top up wallet</h3>
+                  <p className="mt-2 text-sm text-ink-secondary">
                     Balance: {formatMoney(balanceMinor ?? 0)} — need{' '}
                     {formatMoney(tier.priceMinor, tier.currency)} for {tier.name}.
                   </p>
-                  <label className="mt-4 block text-xs text-white/40">Top-up amount (USD)</label>
+                  <label className="mt-4 block text-[10px] font-bold uppercase tracking-label text-ink-dim">
+                    Top-up amount (USD)
+                  </label>
                   <input
                     type="number"
                     min={MIN_TOP_UP_MINOR / 100}
                     step={1}
                     value={topUpAmount / 100}
                     onChange={(e) => setTopUpAmount(Math.round(Number(e.target.value) * 100))}
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-ink-800 px-3 py-2 text-white"
+                    className="input-field mt-1"
                   />
-                  {error && <p className="mt-2 text-sm text-rose-400">{error}</p>}
+                  {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
                   <button
                     onClick={handleTopUp}
                     disabled={loading || topUpAmount < MIN_TOP_UP_MINOR}
-                    className="mt-4 w-full rounded-full bg-neon-500 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                    className="btn-lime mt-4 w-full disabled:opacity-50"
                   >
                     {loading ? 'Processing…' : `Top up ${formatMoney(topUpAmount)}`}
                   </button>
@@ -203,21 +205,21 @@ export function CheckoutPanel({
 
               {step === 'confirm' && tier && (
                 <>
-                  <h3 className="text-lg font-semibold text-white">Confirm purchase</h3>
-                  <p className="mt-2 text-sm text-white/70">
+                  <h3 className="heading-display text-lg font-bold">Confirm purchase</h3>
+                  <p className="mt-2 text-sm text-ink-secondary">
                     {character.name} — {tier.name}
                   </p>
-                  <p className="mt-1 text-2xl font-bold text-neon-300">
+                  <p className="mt-2 font-display text-3xl font-bold text-lime">
                     {formatMoney(tier.priceMinor, tier.currency)}
                   </p>
-                  <p className="text-xs text-white/40">
+                  <p className="text-xs text-ink-dim">
                     Wallet balance: {formatMoney(balanceMinor ?? 0)}
                   </p>
-                  {error && <p className="mt-2 text-sm text-rose-400">{error}</p>}
+                  {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
                   <button
                     onClick={confirmPurchase}
                     disabled={loading}
-                    className="mt-4 w-full rounded-full bg-neon-500 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                    className="btn-lime mt-5 w-full disabled:opacity-50"
                   >
                     {loading ? 'Processing…' : 'Confirm & pay from wallet'}
                   </button>
@@ -226,16 +228,17 @@ export function CheckoutPanel({
 
               {step === 'success' && result && (
                 <>
-                  <h3 className="text-lg font-semibold text-emerald-400">License purchased!</h3>
-                  <p className="mt-2 text-sm text-white/70">
-                    Certificate: <span className="font-mono text-neon-200">{result.serial}</span>
+                  <h3 className="heading-display text-lg font-bold text-lime">License purchased</h3>
+                  <p className="mt-3 text-sm text-ink-secondary">
+                    Certificate:{' '}
+                    <span className="font-mono font-semibold text-lime">{result.serial}</span>
                   </p>
-                  <p className="mt-1 text-xs text-white/40">
-                    Locked assets are available in your dashboard via signed download links.
+                  <p className="mt-1 text-xs text-ink-dim">
+                    Download locked assets from your dashboard.
                   </p>
                   <button
                     onClick={() => router.push('/dashboard')}
-                    className="mt-4 w-full rounded-full bg-neon-500 py-2 text-sm font-semibold text-white"
+                    className="btn-lime mt-5 w-full"
                   >
                     Go to dashboard
                   </button>
@@ -244,12 +247,9 @@ export function CheckoutPanel({
 
               {step === 'error' && (
                 <>
-                  <h3 className="text-lg font-semibold text-rose-400">Something went wrong</h3>
-                  <p className="mt-2 text-sm text-white/60">{error}</p>
-                  <button
-                    onClick={close}
-                    className="mt-4 w-full rounded-full border border-white/15 py-2 text-sm text-white/80"
-                  >
+                  <h3 className="heading-display text-lg font-bold text-red-400">Error</h3>
+                  <p className="mt-2 text-sm text-ink-secondary">{error}</p>
+                  <button onClick={close} className="btn-ghost mt-5 w-full">
                     Close
                   </button>
                 </>
@@ -258,7 +258,7 @@ export function CheckoutPanel({
               {step !== 'success' && step !== 'error' && (
                 <button
                   onClick={close}
-                  className="mt-3 w-full text-center text-xs text-white/40 hover:text-white/60"
+                  className="mt-3 w-full text-center text-[10px] font-semibold uppercase tracking-label text-ink-dim hover:text-ink-secondary"
                 >
                   Cancel
                 </button>
