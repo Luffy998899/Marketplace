@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -7,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UserRole, type AuthTokensDTO, type AuthUserDTO } from '@acm/shared';
 import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
+import { allowDevStubs } from '../config/env';
 import type { JwtPayload } from './auth.decorators';
 
 interface UserRecord {
@@ -27,7 +29,9 @@ export class AuthService {
   private readonly byEmail = new Map<string, string>();
 
   constructor(private readonly jwt: JwtService) {
-    this.seedDemoUser();
+    if (allowDevStubs()) {
+      this.seedDemoUser();
+    }
   }
 
   private seedDemoUser() {
@@ -95,6 +99,12 @@ export class AuthService {
   }): Promise<AuthTokensDTO> {
     const email = input.email.toLowerCase().trim();
     if (this.byEmail.has(email)) throw new ConflictException('Email already registered');
+    if (input.password.length < 8) {
+      throw new ConflictException('Password must be at least 8 characters');
+    }
+    if (input.displayName.trim().length < 2) {
+      throw new ConflictException('Display name is too short');
+    }
 
     const id = `user_${randomUUID()}`;
     const record: UserRecord = {
@@ -121,12 +131,15 @@ export class AuthService {
     return this.issueTokens(user);
   }
 
-  /** Dev/stub Google sign-in — upserts user by email. Wire real OAuth when keys exist. */
+  /** Dev/stub Google sign-in — disabled outside dev stubs. */
   async loginWithGoogle(input: {
     email: string;
     displayName: string;
     googleId: string;
   }): Promise<AuthTokensDTO> {
+    if (!allowDevStubs()) {
+      throw new ForbiddenException('Google sign-in is not enabled');
+    }
     const email = input.email.toLowerCase().trim();
     let id = this.byEmail.get(email);
     if (!id) {

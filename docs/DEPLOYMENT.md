@@ -88,6 +88,20 @@ persist via Postgres. Set `S3_ENDPOINT` for MinIO uploads, `MEILI_HOST` for sear
 | `MEILI_HOST` | — | Meilisearch character search |
 | `STRIPE_SECRET_KEY` | — | Live Stripe gateway (stub if unset) |
 
+## Security (production)
+
+Set these before any public deployment:
+
+| Variable | Production value |
+|----------|------------------|
+| `ALLOW_DEV_STUBS` | `false` — disables demo users, free wallet top-ups, Google auth stub |
+| `JWT_ACCESS_SECRET` | Strong random secret (required) |
+| `ASSET_SIGNING_SECRET` | Separate random secret for download URL HMAC |
+| `CORS_ORIGINS` | Your web origin(s) only, e.g. `https://app.example.com` |
+| `MODERATION_AUTO_APPROVE` | `false` |
+
+Locked creator uploads are stored under `uploads/private/` and are **not** served statically. Only public preview assets under `uploads/public/` are exposed at `/api/uploads/`.
+
 ## Production checklist
 
 - [ ] Set strong `JWT_ACCESS_SECRET`

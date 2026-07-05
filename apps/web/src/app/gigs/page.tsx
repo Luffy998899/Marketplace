@@ -73,7 +73,7 @@ export default function GigsPage() {
                   </p>
                 </div>
                 <p className="mt-2 text-[10px] uppercase tracking-label text-ink-dim">
-                  {g.bids.length} bids · {g.buyerName}
+                  {(g.bidCount ?? g.bids.length)} bids · {g.buyerName}
                 </p>
               </Link>
             ))}

@@ -56,7 +56,13 @@ export class InMemoryLedgerService implements Ledger {
     for (const leg of input.legs) {
       const key = `${walletKey(leg.wallet)}:${leg.amount.currency}`;
       const delta = leg.direction === 'CREDIT' ? leg.amount.amountMinor : -leg.amount.amountMinor;
-      this.balances.set(key, (this.balances.get(key) ?? 0) + delta);
+      const next = (this.balances.get(key) ?? 0) + delta;
+
+      if (leg.wallet.kind === 'user' && leg.direction === 'DEBIT' && next < 0) {
+        throw new BadRequestException('Insufficient wallet balance');
+      }
+
+      this.balances.set(key, next);
     }
 
     const record: LedgerTransactionRecord = {

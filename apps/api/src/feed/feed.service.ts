@@ -4,7 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { MOCK_CHARACTERS, type CreateFeedPostInput, type FeedCommentDTO, type FeedPostDTO } from '@acm/shared';
+import { assertSafeAssetUrl } from '../common/safe-url';
+import { MOCK_CHARACTERS, UserRole, type CreateFeedPostInput, type FeedCommentDTO, type FeedPostDTO } from '@acm/shared';
 import { randomUUID } from 'node:crypto';
 import { AuthService } from '../auth/auth.service';
 import { StudioService } from '../studio/studio.service';
@@ -73,6 +74,11 @@ export class FeedService {
     const character = fromStudio ?? fromMock;
     if (!character) throw new NotFoundException('Character not found');
 
+    const ownerId = this.studio.getCreatorIdForSlug(input.characterSlug);
+    if (ownerId && ownerId !== authorId && author.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('You can only post for characters you created');
+    }
+
     const id = `post_${randomUUID()}`;
     const record: PostRecord = {
       id,
@@ -81,7 +87,7 @@ export class FeedService {
       characterName: character.name,
       authorId,
       authorName: author.displayName,
-      mediaUrl: input.mediaUrl,
+      mediaUrl: assertSafeAssetUrl(input.mediaUrl, 'mediaUrl'),
       isReel: input.isReel ?? false,
       caption: input.caption,
       likeCount: 0,

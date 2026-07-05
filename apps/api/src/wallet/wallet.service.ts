@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   DEFAULT_CURRENCY,
+  MAX_TOP_UP_MINOR,
   MIN_TOP_UP_MINOR,
   PaymentProvider,
   type Money,
@@ -57,6 +58,9 @@ export class WalletService {
     if (amountMinor < MIN_TOP_UP_MINOR) {
       throw new BadRequestException(`Minimum top-up is ${MIN_TOP_UP_MINOR} minor units`);
     }
+    if (amountMinor > MAX_TOP_UP_MINOR) {
+      throw new BadRequestException(`Maximum top-up is ${MAX_TOP_UP_MINOR} minor units`);
+    }
 
     const topUpId = `topup_${randomUUID()}`;
     const amount: Money = { amountMinor, currency };
@@ -64,7 +68,9 @@ export class WalletService {
 
     const intent = await gateway.createTopUpIntent({ topUpId, userId, amount });
     if (intent.status !== 'SUCCEEDED') {
-      throw new BadRequestException('Top-up payment failed');
+      throw new BadRequestException(
+        'Top-up requires payment confirmation. Complete checkout via Stripe client.',
+      );
     }
 
     const txn = await this.ledger.post({

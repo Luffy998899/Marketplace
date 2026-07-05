@@ -10,7 +10,7 @@ export class CommissionsController {
 
   @Get('open')
   listOpen() {
-    return this.commissions.listOpen();
+    return this.commissions.listOpenPublic();
   }
 
   @Get('me')
@@ -21,8 +21,9 @@ export class CommissionsController {
   }
 
   @Get(':id')
-  get(@Param('id') id: string) {
-    return this.commissions.get(id);
+  @UseGuards(JwtAuthGuard)
+  get(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.commissions.getForViewer(id, user.sub, user.role as UserRole);
   }
 
   @Post()

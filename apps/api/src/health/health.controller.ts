@@ -1,4 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
+import { allowDevStubs } from '../config/env';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { StripeGateway } from '../wallet/payment-gateways';
@@ -13,7 +14,7 @@ export class HealthController {
 
   @Get()
   check() {
-    return {
+    const base = {
       status: 'ok',
       service: 'synthetica-api',
       version: '1.0.0',
@@ -25,13 +26,22 @@ export class HealthController {
         reviews: true,
         moderation: true,
       },
-      infrastructure: {
-        prisma: this.prisma.enabled,
-        storage: this.storage.mode,
-        stripe: this.stripe.isLive ? 'live' : 'stub',
-        meilisearch: !!process.env.MEILI_HOST,
-        moderationAutoApprove: process.env.MODERATION_AUTO_APPROVE !== 'false',
-      },
     };
+
+    if (allowDevStubs()) {
+      return {
+        ...base,
+        infrastructure: {
+          prisma: this.prisma.enabled,
+          storage: this.storage.mode,
+          stripe: this.stripe.isLive ? 'live' : 'stub',
+          meilisearch: !!process.env.MEILI_HOST,
+          moderationAutoApprove: process.env.MODERATION_AUTO_APPROVE !== 'false',
+          devStubs: true,
+        },
+      };
+    }
+
+    return base;
   }
 }

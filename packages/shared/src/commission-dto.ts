@@ -39,6 +39,7 @@ export interface CommissionDTO {
   assignedFreelancerName?: string;
   escrowStatus: EscrowStatus;
   deliverableUrl?: string;
+  bidCount?: number;
   bids: BidDTO[];
   createdAt: string;
   updatedAt: string;

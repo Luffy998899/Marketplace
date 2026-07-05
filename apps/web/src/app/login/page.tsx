@@ -11,7 +11,7 @@ export default function LoginPage() {
   const login = useAuthStore((s) => s.login);
   const googleLogin = useAuthStore((s) => s.googleLogin);
   const [email, setEmail] = useState('buyer@synthetica.dev');
-  const [password, setPassword] = useState('demo1234');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 

@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  NotFoundException,
   Param,
   Post,
   UseGuards,
@@ -39,7 +40,9 @@ export class OrdersController {
   @UseGuards(JwtAuthGuard)
   get(@Param('orderId') orderId: string, @CurrentUser() user: JwtPayload) {
     const order = this.orders.getOrder(orderId);
-    if (!order || order.buyerId !== user.sub) return { error: 'not_found' };
+    if (!order || order.buyerId !== user.sub) {
+      throw new NotFoundException('Order not found');
+    }
     return order;
   }
 }
