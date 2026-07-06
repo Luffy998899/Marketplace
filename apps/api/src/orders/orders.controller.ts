@@ -10,6 +10,7 @@ import {
 import { UserRole } from '@acm/shared';
 import { CurrentUser, JwtPayload, Roles } from '../auth/auth.decorators';
 import { JwtAuthGuard, RolesGuard } from '../auth/auth.guards';
+import { PurchaseDto } from '../dto/orders.dto';
 import { OrdersService } from './orders.service';
 
 @Controller('orders')
@@ -21,7 +22,7 @@ export class OrdersController {
   @Roles(UserRole.BUYER, UserRole.CREATOR, UserRole.ADMIN)
   purchase(
     @CurrentUser() user: JwtPayload,
-    @Body() body: { characterSlug: string; licenseTierId: string },
+    @Body() body: PurchaseDto,
   ) {
     return this.orders.purchase({
       buyerId: user.sub,

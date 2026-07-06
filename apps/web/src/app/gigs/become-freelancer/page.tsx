@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { SiteHeader } from '@/components/SiteHeader';
+import { kycApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 
 export default function BecomeFreelancerPage() {
@@ -11,11 +12,21 @@ export default function BecomeFreelancerPage() {
   const { user, loading, becomeFreelancer, isFreelancer } = useAuthStore();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [kycOk, setKycOk] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (loading) return;
     if (!user) router.replace('/login?next=/gigs/become-freelancer');
     else if (isFreelancer()) router.replace('/gigs');
+    else {
+      void kycApi.status().then((s) => {
+        if (s.status !== 'APPROVED') {
+          router.replace('/kyc?next=/gigs/become-freelancer');
+          return;
+        }
+        setKycOk(true);
+      });
+    }
   }, [user, loading, isFreelancer, router]);
 
   async function onActivate() {
@@ -30,7 +41,7 @@ export default function BecomeFreelancerPage() {
     }
   }
 
-  if (loading || !user) {
+  if (loading || !user || kycOk !== true) {
     return (
       <>
         <SiteHeader />
@@ -50,9 +61,9 @@ export default function BecomeFreelancerPage() {
           through escrow-protected releases.
         </p>
         <ul className="mt-6 space-y-2 text-sm text-ink-secondary">
+          <li>· Identity verified via KYC</li>
           <li>· Browse open briefs and submit competitive bids</li>
           <li>· Escrow holds buyer funds until delivery is approved</li>
-          <li>· Revision requests before final payout release</li>
         </ul>
         {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
         <button
@@ -62,9 +73,6 @@ export default function BecomeFreelancerPage() {
         >
           {busy ? 'Activating…' : 'Become a freelancer'}
         </button>
-        <p className="mt-4 text-center text-xs text-ink-dim">
-          Demo freelancer: freelancer@synthetica.dev / demo1234
-        </p>
         <p className="mt-6 text-center text-sm text-ink-dim">
           <Link href="/gigs" className="text-lime hover:underline">
             Back to gigs

@@ -1,10 +1,11 @@
 import { BadRequestException, Body, Controller, Get, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { AssetKind, UserRole, type CreateListingInput, type UpdateListingInput, type UploadListingAssetInput } from '@acm/shared';
+import { AssetKind, UserRole } from '@acm/shared';
 import { AuthService } from '../auth/auth.service';
 import { CurrentUser, JwtPayload, Roles } from '../auth/auth.decorators';
 import { JwtAuthGuard, RolesGuard } from '../auth/auth.guards';
+import { CreateListingDto, UpdateListingDto, UploadListingAssetDto } from '../dto/studio.dto';
 import { StorageService } from '../storage/storage.service';
 import { StudioService } from './studio.service';
 
@@ -29,7 +30,7 @@ export class StudioController {
   }
 
   @Post('listings')
-  create(@CurrentUser() user: JwtPayload, @Body() body: CreateListingInput) {
+  create(@CurrentUser() user: JwtPayload, @Body() body: CreateListingDto) {
     const profile = this.auth.me(user.sub);
     return this.studio.create(user.sub, profile.displayName, body);
   }
@@ -43,7 +44,7 @@ export class StudioController {
   update(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
-    @Body() body: UpdateListingInput,
+    @Body() body: UpdateListingDto,
   ) {
     return this.studio.update(user.sub, id, body);
   }
@@ -57,7 +58,7 @@ export class StudioController {
   uploadAsset(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
-    @Body() body: UploadListingAssetInput,
+    @Body() body: UploadListingAssetDto,
   ) {
     return this.studio.uploadAsset(user.sub, id, body);
   }

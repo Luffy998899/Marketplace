@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { UserRole } from '@acm/shared';
-import { authApi, commissionsApi, setToken, getToken, studioApi } from '@/lib/api';
+import { authApi, commissionsApi, studioApi } from '@/lib/api';
 
 interface AuthUser {
   id: string;
@@ -20,7 +20,7 @@ interface AuthState {
   googleLogin: () => Promise<void>;
   becomeCreator: () => Promise<void>;
   becomeFreelancer: () => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isCreator: () => boolean;
   isFreelancer: () => boolean;
 }
@@ -30,28 +30,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loading: true,
 
   hydrate: async () => {
-    if (!getToken()) {
-      set({ user: null, loading: false });
-      return;
-    }
     try {
       const user = await authApi.me();
       set({ user, loading: false });
     } catch {
-      setToken(null);
       set({ user: null, loading: false });
     }
   },
 
   login: async (email, password) => {
     const res = await authApi.login({ email, password });
-    setToken(res.accessToken);
     set({ user: res.user });
   },
 
   register: async (email, password, displayName) => {
     const res = await authApi.register({ email, password, displayName });
-    setToken(res.accessToken);
     set({ user: res.user });
   },
 
@@ -61,7 +54,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       displayName: 'Google User',
       googleId: `gid_${Date.now()}`,
     });
-    setToken(res.accessToken);
     set({ user: res.user });
   },
 
@@ -75,9 +67,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user });
   },
 
-  logout: () => {
-    setToken(null);
-    set({ user: null });
+  logout: async () => {
+    try {
+      await authApi.logout();
+    } finally {
+      set({ user: null });
+    }
   },
 
   isCreator: () => {

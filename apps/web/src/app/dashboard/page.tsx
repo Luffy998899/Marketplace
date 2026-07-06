@@ -87,8 +87,7 @@ export default function DashboardPage() {
             </span>
             <button
               onClick={() => {
-                logout();
-                router.push('/');
+                void logout().then(() => router.push('/'));
               }}
               className="btn-ghost !px-3 !py-2 !text-xs"
             >

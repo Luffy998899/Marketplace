@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   DEFAULT_CURRENCY,
   MAX_TOP_UP_MINOR,
@@ -7,6 +7,7 @@ import {
   type Money,
 } from '@acm/shared';
 import { randomUUID } from 'node:crypto';
+import { allowDevStubs } from '../config/env';
 import { InMemoryLedgerService } from '../ledger/ledger.service';
 import { RazorpayGateway, StripeGateway } from './payment-gateways';
 
@@ -16,8 +17,9 @@ export interface TopUpRecord {
   amount: Money;
   provider: PaymentProvider;
   providerRef: string;
-  status: 'SUCCEEDED' | 'FAILED';
-  ledgerTxnId: string;
+  status: 'PENDING' | 'SUCCEEDED' | 'FAILED';
+  ledgerTxnId?: string;
+  clientSecret?: string;
   createdAt: string;
 }
 
@@ -27,12 +29,10 @@ export interface WalletBalanceDTO {
   payoutPending: Money;
 }
 
-// Wallet-first payment flow: buyers top up via Stripe/Razorpay, funds credit the
-// USER wallet through the ledger. Purchases debit the wallet (via escrow), never
-// the gateway directly.
 @Injectable()
 export class WalletService {
   private readonly topUps = new Map<string, TopUpRecord>();
+  private readonly byProviderRef = new Map<string, string>();
 
   constructor(
     private readonly ledger: InMemoryLedgerService,
@@ -49,7 +49,7 @@ export class WalletService {
     return { userId, balance, payoutPending };
   }
 
-  async topUp(
+  async initiateTopUp(
     userId: string,
     amountMinor: number,
     currency = DEFAULT_CURRENCY,
@@ -66,38 +66,67 @@ export class WalletService {
     const amount: Money = { amountMinor, currency };
     const gateway = provider === PaymentProvider.RAZORPAY ? this.razorpay : this.stripe;
 
-    const intent = await gateway.createTopUpIntent({ topUpId, userId, amount });
-    if (intent.status !== 'SUCCEEDED') {
-      throw new BadRequestException(
-        'Top-up requires payment confirmation. Complete checkout via Stripe client.',
-      );
-    }
-
-    const txn = await this.ledger.post({
-      transactionId: `wallet_topup_${topUpId}`,
-      reason: 'wallet_topup',
-      metadata: { userId, provider, providerRef: intent.providerRef },
-      legs: [
-        { wallet: { kind: 'user', userId }, direction: 'CREDIT', amount },
-        { wallet: { kind: 'gateway_clearing' }, direction: 'DEBIT', amount },
-      ],
-    });
-
-    const record: TopUpRecord = {
+    const pending: TopUpRecord = {
       id: topUpId,
       userId,
       amount,
       provider,
-      providerRef: intent.providerRef,
-      status: 'SUCCEEDED',
-      ledgerTxnId: txn.transactionId,
+      providerRef: '',
+      status: 'PENDING',
       createdAt: new Date().toISOString(),
     };
-    this.topUps.set(topUpId, record);
+    this.topUps.set(topUpId, pending);
+
+    const intent = await gateway.createTopUpIntent({ topUpId, userId, amount });
+
+    if (intent.status === 'SUCCEEDED' && allowDevStubs()) {
+      return this.completeTopUpFromWebhook(topUpId, intent.providerRef);
+    }
+
+    pending.providerRef = intent.providerRef;
+    pending.clientSecret = intent.clientSecret;
+    this.byProviderRef.set(intent.providerRef, topUpId);
+
+    if (intent.status !== 'SUCCEEDED' && !intent.clientSecret && !allowDevStubs()) {
+      pending.status = 'FAILED';
+      throw new BadRequestException('Payment provider unavailable');
+    }
+
+    return pending;
+  }
+
+  /** Idempotent — credits wallet once per topUpId / providerRef. */
+  async completeTopUpFromWebhook(topUpId: string, providerRef: string): Promise<TopUpRecord> {
+    let record = this.topUps.get(topUpId);
+    if (!record && providerRef) {
+      const id = this.byProviderRef.get(providerRef);
+      if (id) record = this.topUps.get(id);
+    }
+    if (!record) throw new NotFoundException('Top-up not found');
+
+    if (record.status === 'SUCCEEDED') return record;
+
+    const txn = await this.ledger.post({
+      transactionId: `wallet_topup_${record.id}`,
+      reason: 'wallet_topup',
+      metadata: { userId: record.userId, provider: record.provider, providerRef },
+      legs: [
+        { wallet: { kind: 'user', userId: record.userId }, direction: 'CREDIT', amount: record.amount },
+        { wallet: { kind: 'gateway_clearing' }, direction: 'DEBIT', amount: record.amount },
+      ],
+    });
+
+    record.status = 'SUCCEEDED';
+    record.providerRef = providerRef;
+    record.ledgerTxnId = txn.transactionId;
     return record;
   }
 
   listTopUps(userId: string): TopUpRecord[] {
     return [...this.topUps.values()].filter((t) => t.userId === userId);
+  }
+
+  getTopUp(id: string): TopUpRecord | undefined {
+    return this.topUps.get(id);
   }
 }

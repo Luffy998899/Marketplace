@@ -1,7 +1,8 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
-import { UserRole, type CreateFeedPostInput } from '@acm/shared';
+import { UserRole } from '@acm/shared';
 import { CurrentUser, JwtPayload, Roles } from '../auth/auth.decorators';
 import { JwtAuthGuard, RolesGuard } from '../auth/auth.guards';
+import { CreateCommentDto, CreateFeedPostDto } from '../dto/feed.dto';
 import { FeedService } from './feed.service';
 
 @Controller('feed')
@@ -21,7 +22,7 @@ export class FeedController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.CREATOR, UserRole.ADMIN)
-  create(@CurrentUser() user: JwtPayload, @Body() body: CreateFeedPostInput) {
+  create(@CurrentUser() user: JwtPayload, @Body() body: CreateFeedPostDto) {
     return this.feed.create(user.sub, body);
   }
 
@@ -38,7 +39,7 @@ export class FeedController {
 
   @Post(':id/comments')
   @UseGuards(JwtAuthGuard)
-  comment(@CurrentUser() user: JwtPayload, @Param('id') id: string, @Body() body: { body: string }) {
+  comment(@CurrentUser() user: JwtPayload, @Param('id') id: string, @Body() body: CreateCommentDto) {
     return this.feed.addComment(user.sub, id, body.body);
   }
 }

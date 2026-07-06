@@ -2,6 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import type { NextFunction, Request, Response } from 'express';
+import cookieParser from 'cookie-parser';
 import { join } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import { AppModule } from './app.module';
@@ -15,8 +16,11 @@ async function bootstrap() {
   mkdirSync(publicUploadDir, { recursive: true });
   mkdirSync(privateUploadDir, { recursive: true });
 
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+  });
   app.setGlobalPrefix('api');
+  app.use(cookieParser());
 
   const corsOrigins = getCorsOrigins();
   app.enableCors(
@@ -28,8 +32,9 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: false,
+      forbidNonWhitelisted: true,
       transform: true,
+      transformOptions: { enableImplicitConversion: true },
     }),
   );
 
@@ -41,7 +46,6 @@ async function bootstrap() {
     next();
   });
 
-  // Only public preview assets are served statically — locked assets stay in uploads/private/.
   app.useStaticAssets(publicUploadDir, { prefix: '/api/uploads/' });
 
   const port = process.env.API_PORT ? Number(process.env.API_PORT) : 4000;

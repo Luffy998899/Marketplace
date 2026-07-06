@@ -2,6 +2,12 @@ import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { UserRole } from '@acm/shared';
 import { CurrentUser, JwtPayload, Roles } from '../auth/auth.decorators';
 import { JwtAuthGuard, RolesGuard } from '../auth/auth.guards';
+import {
+  CreateBidDto,
+  CreateCommissionDto,
+  DeliverCommissionDto,
+  RevisionDto,
+} from '../dto/commissions.dto';
 import { CommissionsService } from './commissions.service';
 
 @Controller('commissions')
@@ -29,7 +35,7 @@ export class CommissionsController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.BUYER, UserRole.CREATOR, UserRole.ADMIN)
-  create(@CurrentUser() user: JwtPayload, @Body() body: { title: string; brief: string; budgetMinor: number; deadline?: string }) {
+  create(@CurrentUser() user: JwtPayload, @Body() body: CreateCommissionDto) {
     return this.commissions.create(user.sub, body);
   }
 
@@ -39,7 +45,7 @@ export class CommissionsController {
   bid(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
-    @Body() body: { amountMinor: number; message?: string; etaDays?: number },
+    @Body() body: CreateBidDto,
   ) {
     return this.commissions.placeBid(user.sub, id, body);
   }
@@ -60,7 +66,7 @@ export class CommissionsController {
   deliver(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
-    @Body() body: { deliverableUrl: string },
+    @Body() body: DeliverCommissionDto,
   ) {
     return this.commissions.submitDelivery(user.sub, id, body.deliverableUrl);
   }
@@ -76,7 +82,7 @@ export class CommissionsController {
   revision(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
-    @Body() body: { notes: string },
+    @Body() body: RevisionDto,
   ) {
     return this.commissions.requestRevision(user.sub, id, body.notes);
   }

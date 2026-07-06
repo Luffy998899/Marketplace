@@ -1,27 +1,19 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
-
-export function getToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('acm_token');
-}
-
-export function setToken(token: string | null) {
-  if (typeof window === 'undefined') return;
-  if (token) localStorage.setItem('acm_token', token);
-  else localStorage.removeItem('acm_token');
+/** Same-origin in browser (Next rewrite → API). Full URL for SSR. */
+export function getApiBase(): string {
+  if (typeof window !== 'undefined') return '';
+  return process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getToken();
-  const res = await fetch(`${API_URL}/api${path}`, {
+  const res = await fetch(`${getApiBase()}/api${path}`, {
     ...init,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
   });
-    if (!res.ok) {
+  if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
     const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message;
     throw new Error(msg ?? `Request failed (${res.status})`);
@@ -31,22 +23,38 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const authApi = {
   register: (body: { email: string; password: string; displayName: string }) =>
-    api<{ accessToken: string; user: { id: string; email: string; displayName: string; role: string } }>(
+    api<{ user: { id: string; email: string; displayName: string; role: string }; expiresIn: string }>(
       '/auth/register',
       { method: 'POST', body: JSON.stringify(body) },
     ),
   login: (body: { email: string; password: string }) =>
-    api<{ accessToken: string; user: { id: string; email: string; displayName: string; role: string } }>(
+    api<{ user: { id: string; email: string; displayName: string; role: string }; expiresIn: string }>(
       '/auth/login',
       { method: 'POST', body: JSON.stringify(body) },
     ),
   google: (body: { email: string; displayName: string; googleId: string }) =>
-    api<{ accessToken: string; user: { id: string; email: string; displayName: string; role: string } }>(
+    api<{ user: { id: string; email: string; displayName: string; role: string }; expiresIn: string }>(
       '/auth/google',
       { method: 'POST', body: JSON.stringify(body) },
     ),
+  logout: () => api<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
   me: () =>
     api<{ id: string; email: string; displayName: string; role: string }>('/auth/me'),
+};
+
+export const kycApi = {
+  status: () =>
+    api<{
+      status: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
+      legalName?: string;
+      countryCode?: string;
+      message?: string;
+    }>('/kyc/status'),
+  submit: (body: { legalName: string; countryCode: string; agreedToTerms: boolean }) =>
+    api<{ status: string; message?: string }>('/kyc/submit', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 };
 
 export const walletApi = {
@@ -57,10 +65,15 @@ export const walletApi = {
       payoutPending: { amountMinor: number; currency: string };
     }>('/wallet/me/balance'),
   topUp: (amountMinor: number) =>
-    api<{ id: string; amount: { amountMinor: number; currency: string }; status: string }>(
-      '/wallet/me/topup',
-      { method: 'POST', body: JSON.stringify({ amountMinor }) },
-    ),
+    api<{
+      id: string;
+      amount: { amountMinor: number; currency: string };
+      status: string;
+      clientSecret?: string;
+    }>('/wallet/me/topup', {
+      method: 'POST',
+      body: JSON.stringify({ amountMinor }),
+    }),
 };
 
 export const ordersApi = {
@@ -164,13 +177,12 @@ export const studioApi = {
       method: 'POST',
     }),
   uploadFile: async (id: string, kind: string, file: File) => {
-    const token = getToken();
     const form = new FormData();
     form.append('file', file);
     form.append('kind', kind);
-    const res = await fetch(`${API_URL}/api/studio/listings/${id}/upload`, {
+    const res = await fetch(`${getApiBase()}/api/studio/listings/${id}/upload`, {
       method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: 'include',
       body: form,
     });
     if (!res.ok) {

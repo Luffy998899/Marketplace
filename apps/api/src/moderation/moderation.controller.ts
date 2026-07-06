@@ -2,6 +2,8 @@ import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { UserRole } from '@acm/shared';
 import { CurrentUser, JwtPayload, Roles } from '../auth/auth.decorators';
 import { JwtAuthGuard, RolesGuard } from '../auth/auth.guards';
+import { ModerationNotesDto } from '../dto/commissions.dto';
+import { RejectListingDto } from '../dto/studio.dto';
 import { ModerationService } from './moderation.service';
 
 @Controller('moderation')
@@ -19,7 +21,7 @@ export class ModerationController {
   approve(
     @CurrentUser() user: JwtPayload,
     @Param('listingId') listingId: string,
-    @Body() body: { notes?: string },
+    @Body() body: ModerationNotesDto,
   ) {
     return this.moderation.approve(listingId, user.sub, body.notes);
   }
@@ -28,7 +30,7 @@ export class ModerationController {
   reject(
     @CurrentUser() user: JwtPayload,
     @Param('listingId') listingId: string,
-    @Body() body: { notes: string },
+    @Body() body: RejectListingDto,
   ) {
     return this.moderation.reject(listingId, user.sub, body.notes);
   }

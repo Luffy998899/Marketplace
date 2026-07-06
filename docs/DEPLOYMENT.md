@@ -99,6 +99,13 @@ Set these before any public deployment:
 | `ASSET_SIGNING_SECRET` | Separate random secret for download URL HMAC |
 | `CORS_ORIGINS` | Your web origin(s) only, e.g. `https://app.example.com` |
 | `MODERATION_AUTO_APPROVE` | `false` |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret for `POST /api/webhooks/stripe` |
+
+Sessions use **HttpOnly cookies** (`acm_session`) — the web app proxies `/api/*` via Next.js rewrites so cookies stay same-origin. No JWT in `localStorage`.
+
+**KYC** is required before `become-creator` / `become-freelancer`. Submit at `/kyc` — instant approval in dev stubs; pending in production until admin approves via `POST /api/kyc/approve/:userId`.
+
+**Rate limits:** `/auth/login` (10/min), `/auth/register` and `/auth/google` (5/min).
 
 Locked creator uploads are stored under `uploads/private/` and are **not** served statically. Only public preview assets under `uploads/public/` are exposed at `/api/uploads/`.
 
