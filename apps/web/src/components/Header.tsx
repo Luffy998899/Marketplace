@@ -60,6 +60,9 @@ export function Header({ total }: { total?: number }) {
         <Link href="/gigs" className="btn-ghost hidden !px-2 !py-1.5 !text-[10px] shrink-0 md:inline-flex sm:!px-3 sm:!text-xs">
           Gigs
         </Link>
+        <Link href="/explore" className="btn-ghost hidden !px-2 !py-1.5 !text-[10px] shrink-0 lg:inline-flex sm:!px-3 sm:!text-xs">
+          Explore
+        </Link>
 
         {!loading &&
           (user ? (

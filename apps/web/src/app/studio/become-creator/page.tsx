@@ -66,7 +66,7 @@ export default function BecomeCreatorPage() {
           Demo creator: creator@synthetica.dev / demo1234
         </p>
         <p className="mt-6 text-center text-sm text-ink-dim">
-          <Link href="/" className="text-lime hover:underline">
+          <Link href="/explore" className="text-lime hover:underline">
             Back to marketplace
           </Link>
         </p>

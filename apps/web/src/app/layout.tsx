@@ -14,9 +14,9 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: 'Synthetica — AI Character Marketplace',
+  title: 'Synthetica — Synthetic creativity platform',
   description:
-    'Discover, license, and trade fully synthetic AI characters. The world’s first AI Character Marketplace.',
+    'The future isn\'t filmed. It\'s synthesized. Discover, license, and create fully synthetic AI characters.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

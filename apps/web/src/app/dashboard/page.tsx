@@ -168,7 +168,7 @@ export default function DashboardPage() {
           ) : orders.length === 0 ? (
             <div className="card-surface mt-4 border-dashed p-12 text-center">
               <p className="text-ink-secondary">No licenses yet.</p>
-              <Link href="/" className="btn-lime mt-4 inline-block !text-xs">
+              <Link href="/explore" className="btn-lime mt-4 inline-block !text-xs">
                 Explore characters
               </Link>
             </div>

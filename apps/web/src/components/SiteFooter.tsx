@@ -14,6 +14,9 @@ export function SiteFooter() {
         </div>
         <div className="flex flex-wrap gap-6 text-sm font-semibold uppercase tracking-label">
           <Link href="/" className="opacity-80 hover:opacity-100">
+            Home
+          </Link>
+          <Link href="/explore" className="opacity-80 hover:opacity-100">
             Explore
           </Link>
           <Link href="/dashboard" className="opacity-80 hover:opacity-100">

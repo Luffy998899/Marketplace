@@ -330,7 +330,7 @@ export function ListingWizard({ listingId }: { listingId: string }) {
                   <Link href={`/character/${listing.slug}`} className="btn-lime">
                     View listing
                   </Link>
-                  <Link href="/" className="btn-ghost">
+                  <Link href="/explore" className="btn-ghost">
                     Browse marketplace
                   </Link>
                 </div>

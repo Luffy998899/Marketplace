@@ -19,6 +19,9 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-1 sm:flex">
+          <Link href="/explore" className="btn-ghost !px-3 !py-1.5 !text-[10px] sm:!text-xs">
+            Explore
+          </Link>
           <Link href="/feed" className="btn-ghost !px-3 !py-1.5 !text-[10px] sm:!text-xs">
             Feed
           </Link>
