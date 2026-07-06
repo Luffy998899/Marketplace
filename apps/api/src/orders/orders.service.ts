@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   DEFAULT_CURRENCY,
   LicenseType,
@@ -25,6 +25,7 @@ export interface PurchaseResult extends OrderDTO {}
 export class OrdersService {
   private readonly orders = new Map<string, PurchaseResult>();
   private readonly byBuyer = new Map<string, Set<string>>();
+  private readonly exclusiveSoldSlugs = new Set<string>();
 
   constructor(
     private readonly escrow: EscrowServiceImpl,
@@ -38,6 +39,9 @@ export class OrdersService {
 
     const tier = character.licenseTiers.find((t) => t.id === input.licenseTierId);
     if (!tier) throw new NotFoundException('License tier not found');
+    if (this.buyerOwnsCharacter(input.buyerId, input.characterSlug)) {
+      throw new ConflictException('You already own a license for this character');
+    }
     if (!character.available && tier.exclusive) {
       throw new BadRequestException('Character is no longer available for exclusive license');
     }
@@ -83,6 +87,12 @@ export class OrdersService {
       this.orders.set(orderId, result);
       if (!this.byBuyer.has(input.buyerId)) this.byBuyer.set(input.buyerId, new Set());
       this.byBuyer.get(input.buyerId)!.add(orderId);
+
+      if (tier.type === LicenseType.FULL_RIGHTS) {
+        this.studio.markExclusiveSold(input.characterSlug);
+        this.exclusiveSoldSlugs.add(input.characterSlug);
+      }
+
       return result;
     }
 
@@ -111,7 +121,6 @@ export class OrdersService {
     serial?: string;
     orderId?: string;
     ledgerHash?: string;
-    buyerId?: string;
     characterSlug?: string;
     characterName?: string;
     licenseType?: string;
@@ -125,7 +134,6 @@ export class OrdersService {
           serial: order.certificate.serial,
           orderId: order.orderId,
           ledgerHash: order.certificate.ledgerHash,
-          buyerId: order.buyerId,
           characterSlug: order.characterSlug,
           characterName: order.characterName,
           licenseType: order.licenseType,
@@ -137,7 +145,13 @@ export class OrdersService {
   }
 
   private resolveCharacter(slug: string): CharacterDetailDTO | null {
-    return this.studio.getDetailBySlug(slug) ?? getMockCharacterBySlug(slug);
+    const fromStudio = this.studio.getDetailBySlug(slug);
+    const base = fromStudio ?? getMockCharacterBySlug(slug);
+    if (!base) return null;
+    if (this.exclusiveSoldSlugs.has(slug)) {
+      return { ...base, available: false };
+    }
+    return base;
   }
 
   private resolvePayeeId(character: CharacterDetailDTO): string {

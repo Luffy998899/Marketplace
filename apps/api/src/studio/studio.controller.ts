@@ -87,7 +87,15 @@ export class StudioController {
   ) {
     if (!file) throw new BadRequestException('File is required');
     if (!kind) throw new BadRequestException('Asset kind is required');
+
+    const allowedMime =
+      /^(image\/(jpeg|png|webp|gif)|video\/(mp4|webm)|application\/(zip|x-zip-compressed))$/;
+    if (!allowedMime.test(file.mimetype)) {
+      throw new BadRequestException('Unsupported file type');
+    }
+
     const assetKind = kind as AssetKind;
+    this.studio.getById(user.sub, id);
     const url = await this.storage.saveListingAsset(id, assetKind, file);
     return this.studio.uploadAsset(user.sub, id, { kind: assetKind, url });
   }

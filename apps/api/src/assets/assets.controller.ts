@@ -13,6 +13,7 @@ import type { Response } from 'express';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { CurrentUser, JwtPayload } from '../auth/auth.decorators';
 import { JwtAuthGuard } from '../auth/auth.guards';
+import { getAssetSigningSecret } from '../config/env';
 import { OrdersService } from '../orders/orders.service';
 import { StudioService } from '../studio/studio.service';
 
@@ -24,8 +25,7 @@ const LOCKED_LABELS: Record<string, string> = {
 
 @Controller('assets')
 export class AssetsController {
-  private readonly secret =
-    process.env.JWT_ACCESS_SECRET ?? 'dev_access_secret_change_me';
+  private readonly secret = getAssetSigningSecret();
   private readonly ttlSeconds = Number(process.env.SIGNED_URL_TTL_SECONDS ?? 300);
   private readonly apiBase =
     process.env.API_PUBLIC_URL ?? `http://localhost:${process.env.API_PORT ?? 4000}`;
@@ -56,8 +56,8 @@ export class AssetsController {
 
     return character.lockedAssets.map((asset) => {
       const storageKey = `locked/${characterSlug}/${asset.kind.toLowerCase()}.zip`;
-      const sig = this.sign(storageKey, expiresMs);
-      const url = `${this.apiBase}/api/assets/download?key=${encodeURIComponent(storageKey)}&expires=${expiresMs}&sig=${sig}`;
+      const sig = this.sign(storageKey, expiresMs, user.sub);
+      const url = `${this.apiBase}/api/assets/download?key=${encodeURIComponent(storageKey)}&expires=${expiresMs}&sig=${sig}&uid=${encodeURIComponent(user.sub)}`;
       return {
         url,
         expiresAt,
@@ -67,29 +67,37 @@ export class AssetsController {
     });
   }
 
-  /** Verify HMAC signature + expiry, then serve the gated asset. */
+  /** Verify HMAC signature + expiry + buyer binding, then serve the gated asset. */
   @Get('download')
   download(
     @Query('key') key: string,
     @Query('expires') expires: string,
     @Query('sig') sig: string,
+    @Query('uid') uid: string,
     @Res() res: Response,
   ) {
-    if (!key || !expires || !sig) throw new ForbiddenException('Invalid download link');
+    if (!key || !expires || !sig || !uid) throw new ForbiddenException('Invalid download link');
 
     const expiresMs = Number(expires);
     if (Number.isNaN(expiresMs) || Date.now() > expiresMs) {
       throw new ForbiddenException('Download link expired');
     }
 
-    const expected = this.sign(key, expiresMs);
+    const expected = this.sign(key, expiresMs, uid);
     const a = Buffer.from(sig);
     const b = Buffer.from(expected);
     if (a.length !== b.length || !timingSafeEqual(a, b)) {
       throw new ForbiddenException('Invalid download signature');
     }
 
-    // Phase 1: return a placeholder payload. Production swaps to S3/R2 presigned redirect.
+    const slugMatch = /^locked\/([^/]+)\//.exec(key);
+    if (!slugMatch) throw new ForbiddenException('Invalid asset key');
+    const characterSlug = slugMatch[1]!;
+
+    if (!this.orders.buyerOwnsCharacter(uid, characterSlug)) {
+      throw new ForbiddenException('No valid license for this asset');
+    }
+
     const filename = key.split('/').pop() ?? 'asset.zip';
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -101,9 +109,9 @@ export class AssetsController {
     );
   }
 
-  private sign(storageKey: string, expiresMs: number): string {
+  private sign(storageKey: string, expiresMs: number, buyerId: string): string {
     return createHmac('sha256', this.secret)
-      .update(`${storageKey}:${expiresMs}`)
+      .update(`${storageKey}:${expiresMs}:${buyerId}`)
       .digest('hex');
   }
 }

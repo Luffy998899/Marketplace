@@ -15,6 +15,7 @@ import {
   type CreateCommissionInput,
 } from '@acm/shared';
 import { randomUUID } from 'node:crypto';
+import { assertHttpsUrl } from '../common/safe-url';
 import { AuthService } from '../auth/auth.service';
 import { EscrowServiceImpl } from '../ledger/escrow.service';
 
@@ -57,9 +58,13 @@ export class CommissionsService {
   }
 
   listOpen(): CommissionDTO[] {
+    return this.listOpenPublic();
+  }
+
+  listOpenPublic(): CommissionDTO[] {
     return [...this.commissions.values()]
       .filter((c) => c.status === CommissionStatus.OPEN)
-      .map((c) => this.withBids(c));
+      .map((c) => this.toPublicDto(c));
   }
 
   listForBuyer(buyerId: string): CommissionDTO[] {
@@ -81,9 +86,23 @@ export class CommissionsService {
   }
 
   get(id: string): CommissionDTO {
-    const record = this.commissions.get(id);
-    if (!record) throw new NotFoundException('Commission not found');
+    const record = this.requireCommission(id);
     return this.withBids(record);
+  }
+
+  getForViewer(id: string, viewerId: string, role: string): CommissionDTO {
+    const record = this.requireCommission(id);
+    const isBuyer = record.buyerId === viewerId;
+    const isFreelancer =
+      record.assignedFreelancerId === viewerId ||
+      this.bids.get(id)?.some((b) => b.freelancerId === viewerId);
+    const isAdmin = role === 'ADMIN' || role === 'MODERATOR';
+
+    if (isBuyer || isFreelancer || isAdmin) {
+      return this.withBids(record);
+    }
+
+    return this.toPublicDto(record);
   }
 
   create(buyerId: string, input: CreateCommissionInput): CommissionDTO {
@@ -120,6 +139,13 @@ export class CommissionsService {
     }
     const freelancer = this.auth.findById(freelancerId);
     if (!freelancer) throw new ForbiddenException();
+
+    if (input.amountMinor < 500) {
+      throw new BadRequestException('Minimum bid is $5.00');
+    }
+    if (input.amountMinor > record.budgetMinor * 2) {
+      throw new BadRequestException('Bid exceeds maximum allowed amount');
+    }
 
     const list = this.bids.get(commissionId)!;
     if (list.some((b) => b.freelancerId === freelancerId)) {
@@ -171,7 +197,7 @@ export class CommissionsService {
     }
 
     record.status = CommissionStatus.DELIVERED;
-    record.deliverableUrl = deliverableUrl;
+    record.deliverableUrl = assertHttpsUrl(deliverableUrl, 'deliverableUrl');
     record.updatedAt = new Date().toISOString();
     return this.withBids(record);
   }
@@ -216,5 +242,26 @@ export class CommissionsService {
 
   private withBids(record: CommissionRecord): CommissionDTO {
     return { ...record, bids: [...(this.bids.get(record.id) ?? [])] };
+  }
+
+  /** Public gig board view — no buyer IDs, deliverables, or bid details. */
+  private toPublicDto(record: CommissionRecord): CommissionDTO {
+    const bids = this.bids.get(record.id) ?? [];
+    return {
+      id: record.id,
+      buyerId: '',
+      buyerName: record.buyerName,
+      title: record.title,
+      brief: record.brief,
+      budgetMinor: record.budgetMinor,
+      currency: record.currency,
+      deadline: record.deadline,
+      status: record.status,
+      escrowStatus: record.escrowStatus,
+      bidCount: bids.length,
+      bids: [],
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+    };
   }
 }

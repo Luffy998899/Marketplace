@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { FeedPostDTO } from '@acm/shared';
 import { SiteHeader } from '@/components/SiteHeader';
 import { feedApi } from '@/lib/api';
+import { useSafeAsyncEffect } from '@/lib/useSafeAsync';
 import { useAuthStore } from '@/store/auth';
 
 export default function FeedPage() {
@@ -14,9 +15,10 @@ export default function FeedPage() {
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  useSafeAsyncEffect((isActive) => {
     setLoading(true);
-    feedApi.list(page).then((res) => {
+    return feedApi.list(page).then((res) => {
+      if (!isActive()) return;
       setPosts((p) => (page === 1 ? res.items : [...p, ...res.items]));
       setHasMore(res.hasMore);
       setLoading(false);

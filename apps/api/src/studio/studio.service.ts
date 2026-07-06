@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { assertSafeAssetUrl } from '../common/safe-url';
 import {
   AssetKind,
   CharacterStatus,
@@ -198,11 +199,12 @@ export class StudioService {
     const record = this.requireOwned(creatorId, listingId);
     this.assertEditable(record);
     if (!input.url?.trim()) throw new BadRequestException('Asset URL is required');
+    const safeUrl = assertSafeAssetUrl(input.url, 'asset URL');
 
     const asset = record.assets.find((a) => a.kind === input.kind);
     if (!asset) throw new BadRequestException(`Asset kind ${input.kind} not expected for this listing`);
 
-    asset.url = input.url.trim();
+    asset.url = safeUrl;
     asset.uploaded = true;
     if (input.label) asset.label = input.label;
 
@@ -342,6 +344,15 @@ export class StudioService {
   getCreatorIdForSlug(slug: string): string | undefined {
     const id = this.bySlug.get(slug);
     return id ? this.listings.get(id)?.creatorId : undefined;
+  }
+
+  markExclusiveSold(slug: string): void {
+    const id = this.bySlug.get(slug);
+    if (!id) return;
+    const record = this.listings.get(id);
+    if (!record) return;
+    record.available = false;
+    record.updatedAt = new Date().toISOString();
   }
 
   private requireOwned(creatorId: string, listingId: string): ListingRecord {

@@ -2,23 +2,35 @@
 
 import Link from 'next/link';
 import { formatMoney } from '@acm/shared';
-import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import type { CommissionDTO } from '@acm/shared';
 import { SiteHeader } from '@/components/SiteHeader';
 import { commissionsApi } from '@/lib/api';
+import { useSafeAsyncEffect } from '@/lib/useSafeAsync';
 import { useAuthStore } from '@/store/auth';
 
 export default function GigDetailPage({ params }: { params: { id: string } }) {
-  const { user } = useAuthStore();
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuthStore();
   const [gig, setGig] = useState<CommissionDTO | null>(null);
-  const [bidAmount, setBidAmount] = useState(100);
+  const [bidAmount, setBidAmount] = useState(50);
   const [bidMsg, setBidMsg] = useState('');
   const [deliverUrl, setDeliverUrl] = useState('');
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    commissionsApi.get(params.id).then(setGig);
-  }, [params.id]);
+  useSafeAsyncEffect((isActive) => {
+    if (authLoading) return;
+    if (!user) {
+      router.replace(`/login?next=/gigs/${params.id}`);
+      return;
+    }
+    commissionsApi.get(params.id).then((g) => {
+      if (isActive()) setGig(g);
+    }).catch(() => {
+      if (isActive()) router.replace('/gigs');
+    });
+  }, [params.id, user, authLoading, router]);
 
   if (!gig) {
     return (
@@ -49,12 +61,12 @@ export default function GigDetailPage({ params }: { params: { id: string } }) {
         {gig.status === 'OPEN' && user?.role === 'FREELANCER' && (
           <div className="card-surface mt-6 space-y-3 p-4">
             <h2 className="text-xs font-bold uppercase tracking-label text-ink-dim">Place bid</h2>
-            <input type="number" value={bidAmount} onChange={(e) => setBidAmount(Number(e.target.value))} className="input-field" />
+            <input type="number" min={5} step={1} value={bidAmount} onChange={(e) => setBidAmount(Number(e.target.value))} className="input-field" placeholder="Bid amount (USD)" />
             <textarea value={bidMsg} onChange={(e) => setBidMsg(e.target.value)} placeholder="Message" className="input-field" />
             <button
               onClick={async () => {
                 try {
-                  setGig(await commissionsApi.bid(gig.id, { amountMinor: bidAmount * 100, message: bidMsg }));
+                  setGig(await commissionsApi.bid(gig.id, { amountMinor: Math.round(bidAmount * 100), message: bidMsg }));
                 } catch (err) {
                   setError(err instanceof Error ? err.message : 'Bid failed');
                 }
